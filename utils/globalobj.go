@@ -2,10 +2,10 @@ package utils
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"os"
 	"gfep/ziface"
 	"gfep/zlog"
+	"io/ioutil"
+	"os"
 )
 
 /*
@@ -42,6 +42,16 @@ type GlobalObj struct {
 	LogDir        string //日志所在文件夹 默认"./log"
 	LogFile       string //日志文件名称   默认""  --如果没有设置日志文件，打印信息将打印至stderr
 	LogDebugClose bool   //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
+
+	/*
+		Fep
+	*/
+	Timeout             int  //TCP连接超时时间(单位:分钟)
+	SupportCompress     bool //是否支持加密(南网使用)
+	SupportCas          bool //是否级联(南网使用)
+	SupportCasLink      bool //是否级联终端登陆、心跳(南网使用)
+	SupportCommTermianl bool //是否支持终端重复登陆(Y/N)
+	SupportReplyHeart   bool //是否支持前置机维护心跳(Y/N)
 }
 
 /*
@@ -99,7 +109,7 @@ func init() {
 		TcpPort:          20083,
 		Host:             "0.0.0.0",
 		MaxConn:          50000,
-		MaxPacketSize:    4096,
+		MaxPacketSize:    2200,
 		ConfFilePath:     "conf/gfep.json",
 		WorkerPoolSize:   10,
 		MaxWorkerTaskLen: 1024,
@@ -107,6 +117,13 @@ func init() {
 		LogDir:           "./log",
 		LogFile:          "",
 		LogDebugClose:    false,
+
+		Timeout:             30,
+		SupportCompress:     false,
+		SupportCas:          false,
+		SupportCasLink:      false,
+		SupportCommTermianl: true,
+		SupportReplyHeart:   true,
 	}
 
 	//从配置文件中加载一些用户配置的参数

@@ -213,7 +213,7 @@ func Ptl698_45AddrStr(addr []byte) string {
 }
 
 //主站MSA地址比较
-func ptl698_45MsaCmp(msa int, buf []byte) bool {
+func Ptl698_45MsaCmp(msa int, buf []byte) bool {
 	if msa == int(buf[6+buf[4]&0x0f]) {
 		return true
 	}

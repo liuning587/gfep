@@ -8,7 +8,7 @@ import (
 func cb(ptype uint32, data []byte, arg interface{}) {
 	fmt.Println("ptype: ", ptype)
 	PrintBuf(0, data)
-	fmt.Println("TSA: ", ptl698_45AddrGet(data), ptl698_45GetAddrStr(ptl698_45AddrGet(data)))
+	fmt.Println("TSA: ", Ptl698_45AddrGet(data), Ptl698_45AddrStr(Ptl698_45AddrGet(data)))
 }
 
 func TestPtlChkfrm_00(t *testing.T) {
