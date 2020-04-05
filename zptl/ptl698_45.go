@@ -106,7 +106,7 @@ func ptl698_45IsVaild(buf []byte) int32 {
 
 //--------------------------------------------------------------------
 //获取报文传输方向,0:主站-->终端, 1:终端-->主站
-func ptl698_45GetDir(buf []byte) int {
+func Ptl698_45GetDir(buf []byte) int {
 	if buf[3]&0x80 != 0 {
 		return 1
 	}
@@ -114,7 +114,7 @@ func ptl698_45GetDir(buf []byte) int {
 }
 
 //获取报文类型
-func ptl698_45GetFrameType(buf []byte) int {
+func Ptl698_45GetFrameType(buf []byte) int {
 	if buf[3]&0x07 == 0x01 { //链路连接管理（登录，心跳，退出登录）
 		switch buf[7+buf[4]+2+2] {
 		case 0:
@@ -131,7 +131,7 @@ func ptl698_45GetFrameType(buf []byte) int {
 }
 
 //打包登陆、心跳回复包
-func ptl698_45BuildReplyPacket(in []byte, out []byte) int {
+func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 	out[0] = 0x68
 	out[1] = 0x00
 	out[2] = 0x00
@@ -176,7 +176,7 @@ func ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 	out[offset+0] = byte((crc >> 0) & 0xff)
 	out[offset+1] = byte((crc >> 8) & 0xff)
 
-	out[offset+3] = 0x16
+	out[offset+2] = 0x16
 
 	offset += 3
 
@@ -184,7 +184,7 @@ func ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 }
 
 //终端地址比较
-func ptl698_45AddrCmp(addr []byte, buf []byte) bool {
+func Ptl698_45AddrCmp(addr []byte, buf []byte) bool {
 	if buf[5] == 0xaa && buf[4] == 15 {
 		return true
 	}
@@ -198,12 +198,12 @@ func ptl698_45AddrCmp(addr []byte, buf []byte) bool {
 }
 
 //从报文中取出终端地址
-func ptl698_45AddrGet(buf []byte) []byte {
+func Ptl698_45AddrGet(buf []byte) []byte {
 	return buf[4 : 4+(buf[4]&0x0f)+2]
 }
 
 //获取终端字符串
-func ptl698_45GetAddrStr(addr []byte) string {
+func Ptl698_45AddrStr(addr []byte) string {
 	var sa = make([]string, 0)
 	for _, v := range addr {
 		sa = append(sa, fmt.Sprintf("%02X", v))
@@ -221,12 +221,12 @@ func ptl698_45MsaCmp(msa int, buf []byte) bool {
 }
 
 //从报文中取出主站MSA地址
-func ptl698_45MsaGet(buf []byte) int {
+func Ptl698_45MsaGet(buf []byte) int {
 	return int(buf[6+buf[4]&0x0f])
 }
 
 //判断主站发出的msa是否有效
-func ptl698_45IsMsaValid(msa int) bool {
+func Ptl698_45IsMsaValid(msa int) bool {
 	if msa != 0 {
 		return true
 	}

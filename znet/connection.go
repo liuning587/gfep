@@ -3,11 +3,11 @@ package znet
 import (
 	"errors"
 	"fmt"
-	"net"
-	"sync"
 	"gfep/utils"
 	"gfep/ziface"
 	"gfep/zptl"
+	"net"
+	"sync"
 )
 
 type Connection struct {
@@ -50,6 +50,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 		property:     make(map[string]interface{}),
+		ptlChk:       nil,
 	}
 
 	//将新创建的Conn添加到链接管理中

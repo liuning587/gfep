@@ -2,9 +2,9 @@ package znet
 
 import (
 	"fmt"
-	"net"
 	"gfep/utils"
 	"gfep/ziface"
+	"net"
 )
 
 var zinx_logo = `                                        
@@ -103,6 +103,11 @@ func (s *Server) Start() {
 				conn.Close()
 				continue
 			}
+
+			conn.SetKeepAlive(true)
+			// conn.SetNoDelay(true)
+			conn.SetReadBuffer(2200)
+			conn.SetWriteBuffer(2200)
 
 			//3.3 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
 			dealConn := NewConntion(s, conn, cid, s.msgHandler)

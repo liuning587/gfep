@@ -14,15 +14,46 @@ type PTL698_45Router struct {
 
 //698报文处理方法
 func (this *PTL698_45Router) Handle(request ziface.IRequest) {
+	zlog.Debug("recv from client:", zptl.Hex2Str(request.GetData()))
 
-	zlog.Debug("Call 698 Router Handle")
-	//先读取客户端的数据，再回写ping...ping...ping
-	zlog.Debug("recv from client : msgID=", request.GetMsgID(), ", data=", string(request.GetData()))
-
-	// err := request.GetConnection().SendBuffMsg(0, []byte("ping...ping...ping"))
-	// if err != nil {
-	// 	zlog.Error(err)
-	// }
+	if zptl.Ptl698_45GetDir(request.GetData()) == 0 {
+		//from app
+		//寻找匹配的终端连接，进行转发
+	} else {
+		//from 终端
+		switch zptl.Ptl698_45GetFrameType(request.GetData()) {
+		case zptl.LINK_LOGIN:
+			zlog.Debug("终端登录", zptl.Ptl698_45AddrStr(zptl.Ptl698_45AddrGet(request.GetData())))
+			reply := make([]byte, 128)
+			len := zptl.Ptl698_45BuildReplyPacket(request.GetData(), reply)
+			err := request.GetConnection().SendBuffMsg(reply[0:len])
+			if err != nil {
+				zlog.Error(err)
+			}
+			return
+		case zptl.LINK_HAERTBEAT:
+			zlog.Debug("终端心跳", zptl.Ptl698_45AddrStr(zptl.Ptl698_45AddrGet(request.GetData())))
+			reply := make([]byte, 128)
+			len := zptl.Ptl698_45BuildReplyPacket(request.GetData(), reply)
+			err := request.GetConnection().SendBuffMsg(reply[0:len])
+			if err != nil {
+				zlog.Error(err)
+			}
+			return
+		case zptl.LINK_EXIT:
+			zlog.Debug("终端退出", zptl.Ptl698_45AddrStr(zptl.Ptl698_45AddrGet(request.GetData())))
+			reply := make([]byte, 128)
+			len := zptl.Ptl698_45BuildReplyPacket(request.GetData(), reply)
+			err := request.GetConnection().SendBuffMsg(reply[0:len])
+			if err != nil {
+				zlog.Error(err)
+			}
+			return
+		default:
+			break
+		}
+		//寻找对应APP进行转发
+	}
 }
 
 //创建连接的时候执行

@@ -100,7 +100,7 @@ func Hex2Str(data []byte) string {
 		str[i*2+1] = (uint8(v) & 0x0f) + '0'
 	}
 
-	for i := 9; i < len(data)*2; i++ {
+	for i := 0; i < len(data)*2; i++ {
 		if str[i] > '9' {
 			str[i] += 7
 		}
