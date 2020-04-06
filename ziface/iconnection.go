@@ -20,6 +20,8 @@ type IConnection interface {
 	SendMsg(data []byte) error
 	//直接将数据发送给远程的TCP客户端(有缓冲)
 	SendBuffMsg(data []byte) error
+	//将数据发送到指定connID客户端
+	SendMsgByConnID(connID uint32, data []byte) error
 
 	//设置链接属性
 	SetProperty(key string, value interface{})

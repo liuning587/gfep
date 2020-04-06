@@ -206,6 +206,17 @@ func (c *Connection) SendBuffMsg(data []byte) error {
 	return nil
 }
 
+//直接将Message数据发送数据给远程的TCP客户端
+func (c *Connection) SendMsgByConnID(connID uint32, data []byte) error {
+
+	conn, err := c.TcpServer.GetConnMgr().Get(connID)
+	if err != nil {
+		return errors.New("Connection closed when send msg")
+	}
+
+	return conn.SendBuffMsg(data)
+}
+
 //设置链接属性
 func (c *Connection) SetProperty(key string, value interface{}) {
 	c.propertyLock.Lock()
