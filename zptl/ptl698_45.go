@@ -141,9 +141,6 @@ func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 		out[4+i] = in[4+i]
 	}
 	offset := int(4 + in[4]&0xf + 3) //起始1、长度2、控制域1、地址
-	crc := Crc16Calculate(out[1:offset])
-	out[offset+0] = byte((crc >> 0) & 0xff)
-	out[offset+1] = byte((crc >> 8) & 0xff)
 	offset += 2
 
 	out[offset+0] = 0x81
@@ -171,6 +168,11 @@ func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 	//长度区域
 	out[1] = byte(((offset + 3 - 2) >> 0) & 0xff)
 	out[2] = byte(((offset + 3 - 2) >> 8) & 0xff)
+
+	offsetHcs := int(4 + in[4]&0xf + 3) //起始1、长度2、控制域1、地址
+	crc := Crc16Calculate(out[1:offsetHcs])
+	out[offsetHcs+0] = byte((crc >> 0) & 0xff)
+	out[offsetHcs+1] = byte((crc >> 8) & 0xff)
 
 	crc = Crc16Calculate(out[1:offset])
 	out[offset+0] = byte((crc >> 0) & 0xff)
