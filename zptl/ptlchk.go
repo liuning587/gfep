@@ -71,7 +71,7 @@ func (p *PtlChkfrm) Chkfrm(data []byte) int32 {
 	//切片叠加
 	p.buf = append(p.buf, data...)
 
-	for len(data) > 0 {
+	for len(p.buf) > 0 {
 		pos, rlen, ptype := PtlCheck(p.ptype, p.buf)
 		if pos < 0 {
 			p.buf = p.buf[0:0]

@@ -122,7 +122,7 @@ func (c *Connection) StartReader() {
 
 	c.ptlChk = zptl.NewPtlChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
 	defer c.ptlChk.Reset()
-	rbuf := make([]byte, zptl.PmaxPtlFrameLen)
+	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2, zptl.PmaxPtlFrameLen/2)
 
 	for {
 		rlen, err := c.Conn.Read(rbuf)
