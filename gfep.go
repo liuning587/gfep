@@ -7,6 +7,7 @@ import (
 	"gfep/zlog"
 	"gfep/znet"
 	"gfep/zptl"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -270,6 +271,8 @@ func DoConnectionLost(conn ziface.IConnection) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	appList = list.New()
 	tmnList = list.New()
 
