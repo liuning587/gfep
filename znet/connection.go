@@ -125,11 +125,11 @@ func (c *Connection) StartReader() {
 	rbuf := make([]byte, zptl.PmaxPtlFrameLen)
 
 	for {
-		_, err := c.Conn.Read(rbuf)
+		rlen, err := c.Conn.Read(rbuf)
 		if err != nil {
 			break
 		}
-		c.ptlChk.Chkfrm(rbuf)
+		c.ptlChk.Chkfrm(rbuf[0:rlen])
 	}
 }
 
