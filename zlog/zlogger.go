@@ -88,11 +88,10 @@ func NewZinxLog(out io.Writer, prefix string, flag int) *ZinxLogger {
 
 /*
    回收日志处理
- */
- func CleanZinxLog(log *ZinxLogger) {
- 	log.closeFile()
- }
-
+*/
+func CleanZinxLog(log *ZinxLogger) {
+	log.closeFile()
+}
 
 /*
    制作当条日志数据的 格式头信息
@@ -299,12 +298,11 @@ func (log *ZinxLogger) AddFlag(flag int) {
 }
 
 //设置日志的 用户自定义前缀字符串
-func (log *ZinxLogger) SetPrefix(prefix string){
+func (log *ZinxLogger) SetPrefix(prefix string) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	log.prefix = prefix
 }
-
 
 //设置日志文件输出
 func (log *ZinxLogger) SetLogFile(fileDir string, fileName string) {

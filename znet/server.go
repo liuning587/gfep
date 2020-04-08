@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-var zinx_logo = `                                        
+var zinxLogo = `                                        
 ######   ######## ######## ########  
 ##    ##  ##       ##       ##     ## 
 ##        ##       ##       ##     ## 
@@ -16,9 +16,9 @@ var zinx_logo = `
 ##    ##  ##       ##       ##        
  ######   ##       ######## ##        
                                         `
-var top_line = `┌───────────────────────────────────────────────────┐`
-var border_line = `│`
-var bottom_line = `└───────────────────────────────────────────────────┘`
+var topLine = `┌───────────────────────────────────────────────────┐`
+var borderLine = `│`
+var bottomLine = `└───────────────────────────────────────────────────┘`
 
 //iServer 接口实现，定义一个Server服务类
 type Server struct {
@@ -75,7 +75,7 @@ func (s *Server) Start() {
 		}
 
 		//2 监听服务器地址
-		listenner, err := net.ListenTCP(s.IPVersion, addr)
+		listener, err := net.ListenTCP(s.IPVersion, addr)
 		if err != nil {
 			fmt.Println("listen", s.IPVersion, "err", err)
 			return
@@ -91,7 +91,7 @@ func (s *Server) Start() {
 		//3 启动server网络连接业务
 		for {
 			//3.1 阻塞等待客户端建立连接请求
-			conn, err := listenner.AcceptTCP()
+			conn, err := listener.AcceptTCP()
 			if err != nil {
 				fmt.Println("Accept err ", err)
 				continue
@@ -174,10 +174,10 @@ func (s *Server) CallOnConnStop(conn ziface.IConnection) {
 }
 
 func init() {
-	fmt.Println(zinx_logo)
-	fmt.Println(top_line)
-	fmt.Println(fmt.Sprintf("%s [Github] https://github.com/liuning587/gFep       %s", border_line, border_line))
-	fmt.Println(bottom_line)
+	fmt.Println(zinxLogo)
+	fmt.Println(topLine)
+	fmt.Println(fmt.Sprintf("%s [Github] https://github.com/liuning587/gFep       %s", borderLine, borderLine))
+	fmt.Println(bottomLine)
 	fmt.Printf("[gFep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
 		utils.GlobalObject.Version,
 		utils.GlobalObject.MaxConn,

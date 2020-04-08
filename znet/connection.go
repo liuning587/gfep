@@ -25,7 +25,7 @@ type Connection struct {
 	ExitBuffChan chan bool
 	//无缓冲管道，用于读、写两个goroutine之间的消息通信
 	msgChan chan []byte
-	//有关冲管道，用于读、写两个goroutine之间的消息通信
+	//有缓冲管道，用于读、写两个goroutine之间的消息通信
 	msgBuffChan chan []byte
 
 	//链接属性

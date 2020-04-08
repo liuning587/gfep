@@ -36,8 +36,6 @@ func (df *DelayFunc) String() string {
 	return fmt.Sprintf("{DelayFun:%s, args:%v}", reflect.TypeOf(df.f).Name(), df.args)
 }
 
-
-
 /*
 	执行延迟函数---如果执行失败，抛出异常
  */
