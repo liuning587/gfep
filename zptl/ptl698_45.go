@@ -3,6 +3,7 @@ package zptl
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 func ptl698_45HeadIsVaild(buf []byte) int32 {
@@ -130,6 +131,22 @@ func Ptl698_45GetFrameType(buf []byte) int {
 	return OTHER
 }
 
+func getDataTime(buf []byte) {
+	t := time.Now().Local()
+	year := uint16(t.Year())
+	buf[0] = byte(year >> 8)
+	buf[1] = byte(year)
+	buf[2] = byte(t.Month())
+	buf[3] = byte(t.Day())
+	buf[4] = byte(t.Weekday())
+	buf[5] = byte(t.Hour())
+	buf[6] = byte(t.Minute())
+	buf[7] = byte(t.Second())
+	millisecond := t.Nanosecond() / 1e6
+	buf[8] = byte(millisecond >> 8)
+	buf[9] = byte(millisecond)
+}
+
 //打包登陆、心跳回复包
 func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 	out[0] = 0x68
@@ -155,9 +172,7 @@ func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 	offset += 10
 
 	//收到时间: todo: 更具系统时间获取
-	for i := 0; i < 10; i++ {
-		out[offset+i] = 0x00
-	}
+	getDataTime(out[offset:])
 
 	//响应时间
 	for i := 0; i < 10; i++ {

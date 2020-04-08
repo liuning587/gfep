@@ -82,8 +82,8 @@ func (c *Connection) StartWriter() {
 					return
 				}
 			} else {
-				break
 				fmt.Println("msgBuffChan is Closed")
+				break
 			}
 		case <-c.ExitBuffChan:
 			return
