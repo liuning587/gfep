@@ -1,0 +1,16 @@
+{
+  "Name":"gFep",
+  "Host":"0.0.0.0",
+  "TcpPort":20083,
+  "MaxConn":50000,
+  "WorkerPoolSize":10,
+  "LogDir": "./log",
+  "LogFile":"gfep.log",
+  "LogDebugClose": true,
+  "Timeout": 30,
+  "SupportCompress":     false,
+  "SupportCas":          false,
+  "SupportCasLink":      false,
+  "SupportCommTermianl": true,
+  "SupportReplyHeart":   true
+}
