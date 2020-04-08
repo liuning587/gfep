@@ -105,7 +105,7 @@ func (s *Server) Start() {
 			}
 
 			conn.SetKeepAlive(true)
-			conn.SetNoDelay(true)
+			// conn.SetNoDelay(tre)
 			conn.SetReadBuffer(2200)
 			conn.SetWriteBuffer(2200)
 

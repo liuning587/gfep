@@ -66,8 +66,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 		conn.SetProperty("status", connA698)
 		isNewApp := true
 		appLock.Lock()
-		var next *list.Element
-		for e := appList.Front(); e != nil; e = next {
+		for e := appList.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.addrStr == msaStr {
 				a.connID = conn.GetConnID()
@@ -90,7 +89,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 		// zlog.Debug("后台登录", msaStr, "读取", tmnStr)
 		//寻找匹配的终端连接，进行转发
 		tmnLock.Lock()
-		for e := tmnList.Front(); e != nil; e = next {
+		for e := tmnList.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
@@ -117,6 +116,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 			if utils.GlobalObject.SupportCommTermianl != true {
 				var next *list.Element
 				for e := tmnList.Front(); e != nil; e = next {
+					next = e.Next()
 					a, ok := (e.Value).(addrConnID)
 					//todo: 尝试比较级联终端
 					if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
@@ -125,13 +125,11 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 					if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
 						zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
 						//todo: 清除级联
-						next = e.Next()
 						tmnList.Remove(e)
 					}
 				}
 			} else {
-				var next *list.Element
-				for e := tmnList.Front(); e != nil; e = next {
+				for e := tmnList.Front(); e != nil; e = e.Next() {
 					a, ok := (e.Value).(addrConnID)
 					if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
 						isNewTmn = false
@@ -144,11 +142,10 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 				zlog.Debug("终端登录", tmnStr, "connID", conn.GetConnID())
 			} else {
 				zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
-
 			}
 			tmnLock.Unlock()
 
-			reply := make([]byte, 128)
+			reply := make([]byte, 128, 128)
 			len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 			err := conn.SendBuffMsg(reply[0:len])
 			if err != nil {
@@ -171,7 +168,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 						//todo: 级联心跳时, 需判断级联地址是否存在
 						zlog.Debug("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
-						reply := make([]byte, 128)
+						reply := make([]byte, 128, 128)
 						len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
@@ -192,7 +189,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 				zlog.Error("终端未登录就想退出", tmnStr)
 			} else {
 				zlog.Debug("终端退出", tmnStr)
-				reply := make([]byte, 128)
+				reply := make([]byte, 128, 128)
 				len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
@@ -206,8 +203,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 		}
 		//寻找对应APP进行转发
 		appLock.Lock()
-		var next *list.Element
-		for e := appList.Front(); e != nil; e = next {
+		for e := appList.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端主动上报msa==0,所有后台都转发
 			//2. 后台msa为匹配要转发
@@ -240,9 +236,9 @@ func DoConnectionLost(conn ziface.IConnection) {
 		tmnLock.Lock()
 		var next *list.Element
 		for e := tmnList.Front(); e != nil; e = next {
+			next = e.Next()
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.connID == conn.GetConnID() {
-				next = e.Next()
 				tmnList.Remove(e)
 				if utils.GlobalObject.SupportCas != true {
 					break
@@ -256,9 +252,9 @@ func DoConnectionLost(conn ziface.IConnection) {
 		appLock.Lock()
 		var next *list.Element
 		for e := appList.Front(); e != nil; e = next {
+			next = e.Next()
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.connID == conn.GetConnID() {
-				next = e.Next()
 				appList.Remove(e)
 			}
 		}
