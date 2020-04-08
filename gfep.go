@@ -111,43 +111,57 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 				//todo: 处理级联终端登陆
 			}
 
-			isNewTmn := true
-			tmnLock.Lock()
-			if utils.GlobalObject.SupportCommTermianl != true {
-				var next *list.Element
-				for e := tmnList.Front(); e != nil; e = next {
-					next = e.Next()
-					a, ok := (e.Value).(addrConnID)
-					//todo: 尝试比较级联终端
-					if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
-						isNewTmn = false
+			preTmnStr, err := conn.GetProperty("addr")
+			if err != nil || preTmnStr != tmnStr {
+				isNewTmn := true
+				tmnLock.Lock()
+				if utils.GlobalObject.SupportCommTermianl != true {
+					var next *list.Element
+					for e := tmnList.Front(); e != nil; e = next {
+						next = e.Next()
+						a, ok := (e.Value).(addrConnID)
+						//todo: 尝试比较级联终端
+						if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
+							isNewTmn = false
+						}
+						if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
+							zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
+							//todo: 清除级联
+							tmnList.Remove(e)
+						}
 					}
-					if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
-						zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
-						//todo: 清除级联
-						tmnList.Remove(e)
+				} else {
+					var next *list.Element
+					for e := tmnList.Front(); e != nil; e = next {
+						next = e.Next()
+						a, ok := (e.Value).(addrConnID)
+						if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
+							isNewTmn = false
+							break
+						}
+						if utils.GlobalObject.SupportCasLink != true {
+							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
+								//todo: 有可能是联终端登录
+								zlog.Debug("终端登录地址发生变更", tmnStr, "删除", a.connID)
+								tmnList.Remove(e)
+							}
+						}
 					}
 				}
-			} else {
-				for e := tmnList.Front(); e != nil; e = e.Next() {
-					a, ok := (e.Value).(addrConnID)
-					if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
-						isNewTmn = false
-						break
-					}
+				if isNewTmn {
+					tmnList.PushBack(addrConnID{tmnStr, conn.GetConnID()})
+					zlog.Debug("终端登录", tmnStr, "connID", conn.GetConnID())
+				} else {
+					zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
 				}
-			}
-			if isNewTmn {
-				tmnList.PushBack(addrConnID{tmnStr, conn.GetConnID()})
-				zlog.Debug("终端登录", tmnStr, "connID", conn.GetConnID())
+				tmnLock.Unlock()
 			} else {
 				zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
-			tmnLock.Unlock()
 
 			reply := make([]byte, 128, 128)
 			len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
-			err := conn.SendBuffMsg(reply[0:len])
+			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
 				zlog.Error(err)
 			} else {
