@@ -35,6 +35,18 @@ type Connection struct {
 
 	//报文检测
 	ptlChk *zptl.PtlChkfrm
+	// //当前状态
+	// status int
+
+	// //终端/主站地址字符串
+	// addr string
+	// //最近一次报文接收时间
+	// rtime time.Time
+	// //登录时间
+	// ltime time.Time
+	// //心跳时间
+	// htime time.Time
+	// 级联终端信息
 }
 
 //创建连接的方法
