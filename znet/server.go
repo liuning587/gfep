@@ -20,7 +20,7 @@ var topLine = `┌────────────────────�
 var borderLine = `│`
 var bottomLine = `└───────────────────────────────────────────────────┘`
 
-//iServer 接口实现，定义一个Server服务类
+// Server iServer 接口实现，定义一个Server服务类
 type Server struct {
 	//服务器的名称
 	Name string
@@ -40,9 +40,7 @@ type Server struct {
 	OnConnStop func(conn ziface.IConnection)
 }
 
-/*
-  创建一个服务器句柄
-*/
+// NewServer 创建一个服务器句柄
 func NewServer() ziface.IServer {
 
 	s := &Server{
@@ -58,7 +56,7 @@ func NewServer() ziface.IServer {
 
 //============== 实现 ziface.IServer 里的全部接口方法 ========
 
-//开启网络服务
+// Start 开启网络服务
 func (s *Server) Start() {
 	fmt.Printf("[START] Server name: %s,listenner at IP: %s, Port %d is starting\n", s.Name, s.IP, s.Port)
 
@@ -119,7 +117,7 @@ func (s *Server) Start() {
 	}()
 }
 
-//停止服务
+// Stop 停止服务
 func (s *Server) Stop() {
 	fmt.Println("[STOP] Zinx server , name ", s.Name)
 
@@ -127,7 +125,7 @@ func (s *Server) Stop() {
 	s.ConnMgr.ClearConn()
 }
 
-//运行服务
+// Serve 运行服务
 func (s *Server) Serve() {
 	s.Start()
 
@@ -137,27 +135,27 @@ func (s *Server) Serve() {
 	select {}
 }
 
-//路由功能：给当前服务注册一个路由业务方法，供客户端链接处理使用
+// AddRouter 路由功能：给当前服务注册一个路由业务方法，供客户端链接处理使用
 func (s *Server) AddRouter(msgID uint32, router ziface.IRouter) {
 	s.msgHandler.AddRouter(msgID, router)
 }
 
-//得到链接管理
+// GetConnMgr 得到链接管理
 func (s *Server) GetConnMgr() ziface.IConnManager {
 	return s.ConnMgr
 }
 
-//设置该Server的连接创建时Hook函数
+// SetOnConnStart 设置该Server的连接创建时Hook函数
 func (s *Server) SetOnConnStart(hookFunc func(ziface.IConnection)) {
 	s.OnConnStart = hookFunc
 }
 
-//设置该Server的连接断开时的Hook函数
+// SetOnConnStop 设置该Server的连接断开时的Hook函数
 func (s *Server) SetOnConnStop(hookFunc func(ziface.IConnection)) {
 	s.OnConnStop = hookFunc
 }
 
-//调用连接OnConnStart Hook函数
+// CallOnConnStart 调用连接OnConnStart Hook函数
 func (s *Server) CallOnConnStart(conn ziface.IConnection) {
 	if s.OnConnStart != nil {
 		fmt.Println("---> CallOnConnStart....")
@@ -165,7 +163,7 @@ func (s *Server) CallOnConnStart(conn ziface.IConnection) {
 	}
 }
 
-//调用连接OnConnStop Hook函数
+// CallOnConnStop 调用连接OnConnStop Hook函数
 func (s *Server) CallOnConnStop(conn ziface.IConnection) {
 	if s.OnConnStop != nil {
 		fmt.Println("---> CallOnConnStop....")

@@ -8,9 +8,7 @@ import (
 	"time"
 )
 
-/*
-	模拟客户端
-*/
+// ClientTest 模拟客户端
 func ClientTest() {
 
 	fmt.Println("Client Test ... start")
@@ -65,8 +63,8 @@ type PingRouter struct {
 	BaseRouter
 }
 
-//Test PreHandle
-func (this *PingRouter) PreHandle(request ziface.IRequest) {
+// PreHandle Test PreHandle
+func (p *PingRouter) PreHandle(request ziface.IRequest) {
 	fmt.Println("Call Router PreHandle")
 	_, err := request.GetConnection().GetTCPConnection().Write([]byte("before ping ....\n"))
 	if err != nil {
@@ -74,8 +72,8 @@ func (this *PingRouter) PreHandle(request ziface.IRequest) {
 	}
 }
 
-//Test Handle
-func (this *PingRouter) Handle(request ziface.IRequest) {
+// Handle Test Handle
+func (p *PingRouter) Handle(request ziface.IRequest) {
 	fmt.Println("Call PingRouter Handle")
 	_, err := request.GetConnection().GetTCPConnection().Write([]byte("ping...ping...ping\n"))
 	if err != nil {
@@ -83,8 +81,8 @@ func (this *PingRouter) Handle(request ziface.IRequest) {
 	}
 }
 
-//Test PostHandle
-func (this *PingRouter) PostHandle(request ziface.IRequest) {
+// PostHandle Test PostHandle
+func (p *PingRouter) PostHandle(request ziface.IRequest) {
 	fmt.Println("Call Router PostHandle")
 	_, err := request.GetConnection().GetTCPConnection().Write([]byte("After ping .....\n"))
 	if err != nil {

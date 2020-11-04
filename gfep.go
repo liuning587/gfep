@@ -8,6 +8,7 @@ import (
 	"gfep/zlog"
 	"gfep/znet"
 	"gfep/zptl"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -330,6 +331,15 @@ func usrInput() {
 			}
 			appLock.Unlock()
 		case 4:
+			fmt.Println("功能未实现!")
+		case 5:
+			fmt.Println("功能未实现!")
+		case 6:
+			fmt.Println("功能未实现!")
+		case 7:
+			fmt.Println("功能未实现!")
+		case 8:
+			os.Exit(0)
 		}
 		fmt.Printf(helper)
 	}

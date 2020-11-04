@@ -10,6 +10,7 @@ import (
 	"sync"
 )
 
+// Connection connection
 type Connection struct {
 	//当前Conn属于哪个Server
 	TcpServer ziface.IServer
@@ -49,7 +50,7 @@ type Connection struct {
 	// 级联终端信息
 }
 
-//创建连接的方法
+// NewConntion 创建连接的方法
 func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	//初始化Conn属性
 	c := &Connection{
@@ -70,9 +71,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 	return c
 }
 
-/*
-	写消息Goroutine， 用户将数据发送给客户端
-*/
+// StartWriter 写消息Goroutine， 用户将数据发送给客户端
 func (c *Connection) StartWriter() {
 	fmt.Println("[Writer Goroutine is running]")
 	defer fmt.Println(c.RemoteAddr().String(), "[conn Writer exit!]")
@@ -124,9 +123,7 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 	}
 }
 
-/*
-	读消息Goroutine，用于从客户端中读取数据
-*/
+// StartReader 读消息Goroutine，用于从客户端中读取数据
 func (c *Connection) StartReader() {
 	fmt.Println("[Reader Goroutine is running]")
 	defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
@@ -145,7 +142,7 @@ func (c *Connection) StartReader() {
 	}
 }
 
-//启动连接，让当前连接开始工作
+// Start 启动连接，让当前连接开始工作
 func (c *Connection) Start() {
 	//1 开启用户从客户端读取数据流程的Goroutine
 	go c.StartReader()
@@ -155,7 +152,7 @@ func (c *Connection) Start() {
 	c.TcpServer.CallOnConnStart(c)
 }
 
-//停止连接，结束当前连接状态M
+// Stop 停止连接，结束当前连接状态M
 func (c *Connection) Stop() {
 	fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
 	//如果当前链接已经关闭
@@ -180,22 +177,22 @@ func (c *Connection) Stop() {
 	close(c.msgBuffChan)
 }
 
-//从当前连接获取原始的socket TCPConn
+// GetTCPConnection 从当前连接获取原始的socket TCPConn
 func (c *Connection) GetTCPConnection() *net.TCPConn {
 	return c.Conn
 }
 
-//获取当前连接ID
+// GetConnID 获取当前连接ID
 func (c *Connection) GetConnID() uint32 {
 	return c.ConnID
 }
 
-//获取远程客户端地址信息
+// RemoteAddr 获取远程客户端地址信息
 func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
-//直接将Message数据发送数据给远程的TCP客户端
+// SendMsg 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendMsg(data []byte) error {
 	if c.isClosed == true {
 		return errors.New("Connection closed when send msg")
@@ -207,6 +204,7 @@ func (c *Connection) SendMsg(data []byte) error {
 	return nil
 }
 
+// SendBuffMsg 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendBuffMsg(data []byte) error {
 	if c.isClosed == true {
 		return errors.New("Connection closed when send buff msg")
@@ -218,7 +216,7 @@ func (c *Connection) SendBuffMsg(data []byte) error {
 	return nil
 }
 
-//直接将Message数据发送数据给远程的TCP客户端
+// SendMsgByConnID 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendMsgByConnID(connID uint32, data []byte) error {
 
 	conn, err := c.TcpServer.GetConnMgr().Get(connID)
@@ -229,7 +227,7 @@ func (c *Connection) SendMsgByConnID(connID uint32, data []byte) error {
 	return conn.SendBuffMsg(data)
 }
 
-//设置链接属性
+// SetProperty 设置链接属性
 func (c *Connection) SetProperty(key string, value interface{}) {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
@@ -237,7 +235,7 @@ func (c *Connection) SetProperty(key string, value interface{}) {
 	c.property[key] = value
 }
 
-//获取链接属性
+// GetProperty 获取链接属性
 func (c *Connection) GetProperty(key string) (interface{}, error) {
 	c.propertyLock.RLock()
 	defer c.propertyLock.RUnlock()
@@ -249,7 +247,7 @@ func (c *Connection) GetProperty(key string) (interface{}, error) {
 	}
 }
 
-//移除链接属性
+// RemoveProperty 移除链接属性
 func (c *Connection) RemoveProperty(key string) {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
