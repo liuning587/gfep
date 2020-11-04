@@ -8,6 +8,7 @@ import (
 	"gfep/zptl"
 	"net"
 	"sync"
+	"time"
 )
 
 // Connection connection
@@ -30,23 +31,16 @@ type Connection struct {
 	msgBuffChan chan []byte
 
 	//链接属性
-	property map[string]interface{}
+	// property map[string]interface{}
 	//保护链接属性修改的锁
 	propertyLock sync.RWMutex
 
-	//报文检测
-	// ptlChk *zptl.Chkfrm
-	// //当前状态
-	// status int
-
-	// //终端/主站地址字符串
-	// addr string
-	// //最近一次报文接收时间
-	// rtime time.Time
-	// //登录时间
-	// ltime time.Time
-	// //心跳时间
-	// htime time.Time
+	status int       //当前状态
+	addr   string    //终端/主站地址字符串
+	ctime  time.Time //连接时间
+	ltime  time.Time //登录时间
+	htime  time.Time //心跳时间
+	rtime  time.Time //最近一次报文接收时间
 	// 级联终端信息
 }
 
@@ -62,8 +56,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
-		property:     make(map[string]interface{}),
-		// ptlChk:       nil,
+		// property:     make(map[string]interface{}),
 	}
 
 	//将新创建的Conn添加到链接管理中
@@ -174,7 +167,7 @@ func (c *Connection) Stop() {
 	//关闭该链接全部管道
 	close(c.ExitBuffChan)
 	close(c.msgBuffChan)
-	c.property = nil
+	// c.property = nil
 }
 
 // GetTCPConnection 从当前连接获取原始的socket TCPConn
@@ -232,7 +225,33 @@ func (c *Connection) SetProperty(key string, value interface{}) {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
 
-	c.property[key] = value
+	// c.property[key] = value
+	switch key {
+	case "status":
+		if v, ok := value.(int); ok {
+			c.status = v
+		}
+	case "addr":
+		if v, ok := value.(string); ok {
+			c.addr = v
+		}
+	case "ctime":
+		if v, ok := value.(time.Time); ok {
+			c.ctime = v
+		}
+	case "ltime":
+		if v, ok := value.(time.Time); ok {
+			c.ltime = v
+		}
+	case "htime":
+		if v, ok := value.(time.Time); ok {
+			c.htime = v
+		}
+	case "rtime":
+		if v, ok := value.(time.Time); ok {
+			c.rtime = v
+		}
+	}
 }
 
 // GetProperty 获取链接属性
@@ -240,8 +259,22 @@ func (c *Connection) GetProperty(key string) (interface{}, error) {
 	c.propertyLock.RLock()
 	defer c.propertyLock.RUnlock()
 
-	if value, ok := c.property[key]; ok {
-		return value, nil
+	// if value, ok := c.property[key]; ok {
+	// 	return value, nil
+	// }
+	switch key {
+	case "status":
+		return c.status, nil
+	case "addr":
+		return c.addr, nil
+	case "ctime":
+		return c.ctime, nil
+	case "ltime":
+		return c.ltime, nil
+	case "htime":
+		return c.htime, nil
+	case "rtime":
+		return c.rtime, nil
 	}
 	return nil, errors.New("no property found")
 }
@@ -251,5 +284,5 @@ func (c *Connection) RemoveProperty(key string) {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
 
-	delete(c.property, key)
+	// delete(c.property, key)
 }
