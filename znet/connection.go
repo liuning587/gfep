@@ -35,7 +35,7 @@ type Connection struct {
 	propertyLock sync.RWMutex
 
 	//报文检测
-	ptlChk *zptl.Chkfrm
+	// ptlChk *zptl.Chkfrm
 	// //当前状态
 	// status int
 
@@ -63,7 +63,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 		property:     make(map[string]interface{}),
-		ptlChk:       nil,
+		// ptlChk:       nil,
 	}
 
 	//将新创建的Conn添加到链接管理中
@@ -129,8 +129,7 @@ func (c *Connection) StartReader() {
 	defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
 	defer c.Stop()
 
-	c.ptlChk = zptl.NewChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
-	defer c.ptlChk.Reset()
+	ptlChk := zptl.NewChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
 	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2, zptl.PmaxPtlFrameLen/2)
 
 	for {
@@ -138,7 +137,7 @@ func (c *Connection) StartReader() {
 		if err != nil {
 			break
 		}
-		c.ptlChk.Chkfrm(rbuf[0:rlen])
+		ptlChk.Chkfrm(rbuf[0:rlen])
 	}
 }
 
@@ -175,6 +174,7 @@ func (c *Connection) Stop() {
 	//关闭该链接全部管道
 	close(c.ExitBuffChan)
 	close(c.msgBuffChan)
+	c.property = nil
 }
 
 // GetTCPConnection 从当前连接获取原始的socket TCPConn
@@ -242,9 +242,8 @@ func (c *Connection) GetProperty(key string) (interface{}, error) {
 
 	if value, ok := c.property[key]; ok {
 		return value, nil
-	} else {
-		return nil, errors.New("no property found")
 	}
+	return nil, errors.New("no property found")
 }
 
 // RemoveProperty 移除链接属性

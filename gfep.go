@@ -8,6 +8,8 @@ import (
 	"gfep/zlog"
 	"gfep/znet"
 	"gfep/zptl"
+
+	// _ "net/http/pprof"
 	"os"
 	"runtime"
 	"strconv"
@@ -347,6 +349,10 @@ func usrInput() {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:9999", nil))
+	// }()
 
 	// zlog.SetLogFile("./log", "gfep.log")
 	// zlog.OpenDebug()
