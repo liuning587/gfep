@@ -303,6 +303,7 @@ func usrInput() {
 	var menu int
 
 	for {
+		menu = 0
 		fmt.Scanln(&menu)
 		fmt.Println("Hi you input is", menu)
 		switch menu {
