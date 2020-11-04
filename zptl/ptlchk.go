@@ -1,6 +1,7 @@
 package zptl
 
-type PtlChkfrm struct {
+//Chkfrm ptl check frame
+type Chkfrm struct {
 	//超时时间ms
 	timeout int64
 	//最近接收到数据时标
@@ -18,10 +19,10 @@ type PtlChkfrm struct {
 	buf []byte
 }
 
-//初始化报文检测的方法
-func NewPtlChkfrm(ptype uint32, timeout int64, f func(uint32, []byte, interface{}), arg interface{}) *PtlChkfrm {
+//NewChkfrm 初始化报文检测的方法
+func NewChkfrm(ptype uint32, timeout int64, f func(uint32, []byte, interface{}), arg interface{}) *Chkfrm {
 	//初始化chkfrm属性
-	p := &PtlChkfrm{
+	p := &Chkfrm{
 		timeout: timeout,
 		rtime:   0,
 		ptype:   ptype,
@@ -33,8 +34,8 @@ func NewPtlChkfrm(ptype uint32, timeout int64, f func(uint32, []byte, interface{
 	return p
 }
 
-//报文检测, 返回合法报文数量
-func (p *PtlChkfrm) Chkfrm(data []byte) int32 {
+//Chkfrm 报文检测, 返回合法报文数量
+func (p *Chkfrm) Chkfrm(data []byte) int32 {
 	var cnt int32 = 0
 
 	if p.ptype == 0 {
@@ -48,7 +49,7 @@ func (p *PtlChkfrm) Chkfrm(data []byte) int32 {
 		return 1
 	}
 
-	if GetTick()-p.rtime > p.timeout {
+	if getTick()-p.rtime > p.timeout {
 		if len(p.buf) > 0 {
 			p.buf = p.buf[1:]
 		} else {
@@ -60,7 +61,7 @@ func (p *PtlChkfrm) Chkfrm(data []byte) int32 {
 		return cnt
 	}
 
-	p.rtime = GetTick()
+	p.rtime = getTick()
 	if p.buf == nil {
 		p.buf = make([]byte, 0, PmaxPtlFrameLen)
 		if p.buf == nil {
@@ -72,27 +73,32 @@ func (p *PtlChkfrm) Chkfrm(data []byte) int32 {
 	p.buf = append(p.buf, data...)
 
 	for len(p.buf) > 0 {
-		pos, rlen, ptype := PtlCheck(p.ptype, p.buf)
-		if pos < 0 {
-			p.buf = p.buf[0:0]
+		offset := findFirstByte(p.ptype, p.buf)
+		if offset < 0 {
+			p.buf = p.buf[:0]
 			return cnt //68,88,98都找不到, 不需要申请空间
 		}
-		if pos > 0 {
-			p.buf = p.buf[pos:]
+		if offset > 0 {
+			p.buf = p.buf[offset:]
 		}
+		rlen, ptype := IsVaild(p.ptype, p.buf)
 		if rlen > 0 {
 			if p.f != nil {
 				p.f(ptype, p.buf[:rlen], p.arg)
 			}
 			p.buf = p.buf[rlen:]
+		} else if rlen == 0 {
+			break //报文不完整
+		} else {
+			p.buf = p.buf[1:]
 		}
 	}
 
 	return cnt
 }
 
-//复位
-func (p *PtlChkfrm) Reset() {
+//Reset 复位
+func (p *Chkfrm) Reset() {
 	// p.pos = 0
 	p.rtime = 0
 	//可以考虑释放buf

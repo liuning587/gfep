@@ -25,6 +25,7 @@ const (
 	ONLINE         = 5
 )
 
+//常量
 const (
 	PmaxPtlFrameLen = 2200 //最大报文长度
 )
@@ -36,11 +37,17 @@ type ptlChkTab struct {
 
 var thePtlChkTab = [...]ptlChkTab{
 	{PTL_698_45, ptl698_45IsVaild},
+	{PTL_NW, ptlNwIsVaild},
+	{PTL_NWM, ptlNwmIsVaild},
+	{PTL_645_07, ptl645_07IsVaild},
+	{PTL_645_97, ptl645_97IsVaild},
+	{PTL_1376_1, ptl1376_1IsVaild},
+	{PTL_1376_2, ptl1376_2IsVaild},
 	//todo: other plt
 }
 
-//获取报文类型
-func PtlGetType(data []byte) uint32 {
+// GetType 获取报文类型
+func GetType(data []byte) uint32 {
 	for i := 0; i < len(thePtlChkTab); i++ {
 		if 0 < thePtlChkTab[i].isVaild(data) {
 			return thePtlChkTab[i].ptype
@@ -50,8 +57,8 @@ func PtlGetType(data []byte) uint32 {
 	return PTL_UNKNOW
 }
 
-//获取报文长度
-func PtlGetLen(data []byte) int32 {
+// GetLen 获取报文长度
+func GetLen(data []byte) int32 {
 	for i := 0; i < len(thePtlChkTab); i++ {
 		rlen := thePtlChkTab[i].isVaild(data)
 		if 0 < rlen {
@@ -61,8 +68,8 @@ func PtlGetLen(data []byte) int32 {
 	return 0
 }
 
-//判断报文释放合法
-func PtlIsVaild(ptype uint32, data []byte) (int32, uint32) {
+// IsVaild 判断报文释放合法
+func IsVaild(ptype uint32, data []byte) (int32, uint32) {
 	for i := 0; i < len(thePtlChkTab); i++ {
 		if ptype&thePtlChkTab[i].ptype != 0 {
 			rlen := thePtlChkTab[i].isVaild(data)
@@ -76,7 +83,7 @@ func PtlIsVaild(ptype uint32, data []byte) (int32, uint32) {
 }
 
 //判断是否为协议首字节
-func ptlIsFirstByte(ptype uint32, head byte) bool {
+func isFirstByte(ptype uint32, head byte) bool {
 	if head == 0x68 {
 		return true
 	}
@@ -92,8 +99,8 @@ func ptlIsFirstByte(ptype uint32, head byte) bool {
 	return false
 }
 
-//获取指定协议报文首字节偏移
-func ptlFindFirstByte(ptype uint32, data []byte) int32 {
+//findFirstByte 获取指定协议报文首字节偏移
+func findFirstByte(ptype uint32, data []byte) int32 {
 	var i int32
 	var dlen int32 = int32(len(data))
 
@@ -129,13 +136,13 @@ func ptlFindFirstByte(ptype uint32, data []byte) int32 {
 	return -1
 }
 
-//从输入缓存中找出首条合法报文
-func PtlCheck(ptype uint32, data []byte) (int32, int32, uint32) {
+//Check 从输入缓存中找出首条合法报文
+func Check(ptype uint32, data []byte) (int32, int32, uint32) {
 	var pos int32 = 0
 	inlen := int32(len(data))
 
 	for inlen > 0 {
-		offset := ptlFindFirstByte(ptype, data[pos:])
+		offset := findFirstByte(ptype, data[pos:])
 		if offset < 0 {
 			return -1, 0, PTL_UNKNOW //头部(68,88,98)都找不到, 直接退出
 		}
@@ -145,7 +152,7 @@ func PtlCheck(ptype uint32, data []byte) (int32, int32, uint32) {
 			return -1, 0, PTL_UNKNOW //最后1个字节是(68,88,98)
 		}
 
-		rlen, ptype := PtlIsVaild(ptype, data[pos:])
+		rlen, ptype := IsVaild(ptype, data[pos:])
 		if rlen >= 0 {
 			return pos, rlen, ptype
 		}

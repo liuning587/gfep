@@ -34,7 +34,7 @@ type Connection struct {
 	propertyLock sync.RWMutex
 
 	//报文检测
-	ptlChk *zptl.PtlChkfrm
+	ptlChk *zptl.Chkfrm
 	// //当前状态
 	// status int
 
@@ -132,7 +132,7 @@ func (c *Connection) StartReader() {
 	defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
 	defer c.Stop()
 
-	c.ptlChk = zptl.NewPtlChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
+	c.ptlChk = zptl.NewChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
 	defer c.ptlChk.Reset()
 	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2, zptl.PmaxPtlFrameLen/2)
 
