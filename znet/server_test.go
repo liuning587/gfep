@@ -2,10 +2,10 @@ package znet
 
 import (
 	"fmt"
+	"gfep/ziface"
 	"net"
 	"testing"
 	"time"
-	"gfep/ziface"
 )
 
 /*
@@ -96,7 +96,7 @@ func TestServerV0_3(t *testing.T) {
 	//创建一个server句柄
 	s := NewServer()
 
-	s.AddRouter(&PingRouter{})
+	s.AddRouter(0, &PingRouter{})
 
 	//	客户端测试
 	go ClientTest()

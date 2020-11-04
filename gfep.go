@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/list"
+	"fmt"
 	"gfep/utils"
 	"gfep/ziface"
 	"gfep/zlog"
@@ -42,13 +43,13 @@ const (
 	connANW    = 7
 )
 
-//698规约路由
+// PTL698_45Router 698规约路由
 type PTL698_45Router struct {
 	znet.BaseRouter
 }
 
-//698报文处理方法
-func (this *PTL698_45Router) Handle(request ziface.IRequest) {
+// Handle 698报文处理方法
+func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 	conn := request.GetConnection()
 	connStatus, err := conn.GetProperty("status")
 	if err != nil {
@@ -61,7 +62,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 	conn.SetProperty("rtime", time.Now()) //最近报文接收时间
 
 	if zptl.Ptl698_45GetDir(rData) == 0 {
-		zlog.Debug("A:", zptl.Hex2Str(rData))
+		zlog.Debugf("A: % X\n", rData)
 		//from app
 		conn.SetProperty("status", connA698)
 		isNewApp := true
@@ -104,7 +105,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 		tmnLock.Unlock()
 	} else {
 		//from 终端
-		zlog.Debug("T:", zptl.Hex2Str(rData))
+		zlog.Debugf("T: % X\n", rData)
 		switch zptl.Ptl698_45GetFrameType(rData) {
 		case zptl.LINK_LOGIN:
 			if utils.GlobalObject.SupportCasLink {
@@ -123,6 +124,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 						//todo: 尝试比较级联终端
 						if ok && a.addrStr == tmnStr && a.connID == conn.GetConnID() {
 							isNewTmn = false
+							break
 						}
 						if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
 							zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
@@ -168,9 +170,10 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("status", connT698)
 				conn.SetProperty("addr", tmnStr)
-				zlog.Debug("L:", zptl.Hex2Str(reply[0:len]))
+				zlog.Debugf("L: % X\n", reply[0:len])
 			}
 			return
+
 		case zptl.LINK_HAERTBEAT:
 			if utils.GlobalObject.SupportReplyHeart {
 				if connStatus != connT698 {
@@ -188,7 +191,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 						if err != nil {
 							zlog.Error(err)
 						} else {
-							zlog.Debug("H:", zptl.Hex2Str(reply[0:len]))
+							zlog.Debugf("H: % X", reply[0:len])
 						}
 					} else {
 						zlog.Error("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
@@ -198,6 +201,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 				return
 			}
 			break
+
 		case zptl.LINK_EXIT:
 			if connStatus != connT698 {
 				zlog.Error("终端未登录就想退出", tmnStr)
@@ -212,6 +216,7 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 			}
 			conn.Stop()
 			return
+
 		default:
 			break
 		}
@@ -232,13 +237,13 @@ func (this *PTL698_45Router) Handle(request ziface.IRequest) {
 	}
 }
 
-//创建连接的时候执行
+// DoConnectionBegin 创建连接的时候执行
 func DoConnectionBegin(conn ziface.IConnection) {
 	conn.SetProperty("status", connIdle)  //默认状态
 	conn.SetProperty("ctime", time.Now()) //连接时间
 }
 
-//连接断开的时候执行
+// DoConnectionLost 连接断开的时候执行
 func DoConnectionLost(conn ziface.IConnection) {
 	connStatus, err := conn.GetProperty("status")
 	if err != nil {
@@ -280,8 +285,64 @@ func DoConnectionLost(conn ziface.IConnection) {
 	}
 }
 
+func usrInput() {
+	helper := `~~~~~~~~~~~~~~~~~~~
+1. 显示在线终端列表
+2. 显示在线后台列表
+3. 显示版本信息
+4. 设置调试级别
+5. 屏蔽心跳
+6. 剔除终端
+7. 尝试升级
+8. 退出
+~~~~~~~~~~~~~~~~~~~
+:`
+	var menu int
+
+	for {
+		fmt.Scanln(&menu)
+		fmt.Println("Hi you input is", menu)
+		switch menu {
+		case 1:
+			tmnLock.Lock()
+			var i int
+			var next *list.Element
+			for e := tmnList.Front(); e != nil; e = next {
+				next = e.Next()
+				t, ok := (e.Value).(addrConnID)
+				if ok {
+					fmt.Printf("%d %s, %d\n", i, t.addrStr, t.connID)
+					i++
+				}
+			}
+			tmnLock.Unlock()
+		case 2:
+			appLock.Lock()
+			var i int
+			var next *list.Element
+			for e := appList.Front(); e != nil; e = next {
+				next = e.Next()
+				a, ok := (e.Value).(addrConnID)
+				if ok {
+					fmt.Printf("%d %s, %d\n", i, a.addrStr, a.connID)
+					i++
+				}
+			}
+			appLock.Unlock()
+		case 4:
+		}
+		fmt.Printf(helper)
+	}
+}
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	// zlog.SetLogFile("./log", "gfep.log")
+	// zlog.OpenDebug()
+	// zlog.ResetFlags(zlog.BitDefault | zlog.BitMicroSeconds)
+	// zlog.CloseDebug()
+	go usrInput()
 
 	appList = list.New()
 	tmnList = list.New()
