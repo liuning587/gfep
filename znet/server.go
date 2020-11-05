@@ -47,7 +47,7 @@ func NewServer() ziface.IServer {
 		Name:       utils.GlobalObject.Name,
 		IPVersion:  "tcp4",
 		IP:         utils.GlobalObject.Host,
-		Port:       utils.GlobalObject.TcpPort,
+		Port:       utils.GlobalObject.TCPPort,
 		msgHandler: NewMsgHandle(),
 		ConnMgr:    NewConnManager(),
 	}

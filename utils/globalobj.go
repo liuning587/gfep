@@ -8,17 +8,14 @@ import (
 	"os"
 )
 
-/*
-	存储一切有关Zinx框架的全局参数，供其他模块使用
-	一些参数也可以通过 用户根据 zinx.json来配置
-*/
+// GlobalObj 存储一切有关Zinx框架的全局参数，供其他模块使用一些参数也可以通过 用户根据 zinx.json来配置
 type GlobalObj struct {
 	/*
 		Server
 	*/
-	TcpServer ziface.IServer //当前Zinx的全局Server对象
+	TCPServer ziface.IServer //当前Zinx的全局Server对象
 	Host      string         //当前服务器主机IP
-	TcpPort   int            //当前服务器主机监听端口号
+	TCPPort   int            //当前服务器主机监听端口号
 	Name      string         //当前服务器名称
 
 	/*
@@ -54,12 +51,10 @@ type GlobalObj struct {
 	SupportReplyHeart   bool //是否支持前置机维护心跳(Y/N)
 }
 
-/*
-	定义一个全局的对象
-*/
+// GlobalObject 定义一个全局的对象
 var GlobalObject *GlobalObj
 
-//判断一个文件是否存在
+// PathExists 判断一个文件是否存在
 func PathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -71,7 +66,7 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-//读取用户的配置文件
+// Reload 读取用户的配置文件
 func (g *GlobalObj) Reload() {
 
 	if confFileExists, _ := PathExists(g.ConfFilePath); confFileExists != true {
@@ -106,14 +101,14 @@ func init() {
 	GlobalObject = &GlobalObj{
 		Name:             "gFep",
 		Version:          "V0.1",
-		TcpPort:          20083,
+		TCPPort:          20083,
 		Host:             "0.0.0.0",
 		MaxConn:          50000,
 		MaxPacketSize:    2200,
 		ConfFilePath:     "conf/gfep.json",
 		WorkerPoolSize:   10,
 		MaxWorkerTaskLen: 1024,
-		MaxMsgChanLen:    1024,
+		MaxMsgChanLen:    8,
 		LogDir:           "./log",
 		LogFile:          "",
 		LogDebugClose:    false,

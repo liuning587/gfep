@@ -2,7 +2,7 @@ package ziface
 
 import "net"
 
-//定义连接接口
+// IConnection 定义连接接口
 type IConnection interface {
 	//启动连接，让当前连接开始工作
 	Start()

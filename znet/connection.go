@@ -14,7 +14,7 @@ import (
 // Connection connection
 type Connection struct {
 	//当前Conn属于哪个Server
-	TcpServer ziface.IServer
+	TCPServer ziface.IServer
 	//当前连接的socket TCP套接字
 	Conn *net.TCPConn
 	//当前连接的ID 也可以称作为SessionID，ID全局唯一
@@ -35,6 +35,7 @@ type Connection struct {
 	//保护链接属性修改的锁
 	propertyLock sync.RWMutex
 
+	//链接属性: 先不用map节约资源
 	status int       //当前状态
 	addr   string    //终端/主站地址字符串
 	ctime  time.Time //连接时间
@@ -48,7 +49,7 @@ type Connection struct {
 func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	//初始化Conn属性
 	c := &Connection{
-		TcpServer:    server,
+		TCPServer:    server,
 		Conn:         conn,
 		ConnID:       connID,
 		isClosed:     false,
@@ -60,7 +61,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 	}
 
 	//将新创建的Conn添加到链接管理中
-	c.TcpServer.GetConnMgr().Add(c)
+	c.TCPServer.GetConnMgr().Add(c)
 	return c
 }
 
@@ -141,7 +142,7 @@ func (c *Connection) Start() {
 	//2 开启用于写回客户端数据流程的Goroutine
 	go c.StartWriter()
 	//按照用户传递进来的创建连接时需要处理的业务，执行钩子方法
-	c.TcpServer.CallOnConnStart(c)
+	c.TCPServer.CallOnConnStart(c)
 }
 
 // Stop 停止连接，结束当前连接状态M
@@ -154,7 +155,7 @@ func (c *Connection) Stop() {
 	c.isClosed = true
 
 	//如果用户注册了该链接的关闭回调业务，那么在此刻应该显示调用
-	c.TcpServer.CallOnConnStop(c)
+	c.TCPServer.CallOnConnStop(c)
 
 	// 关闭socket链接
 	c.Conn.Close()
@@ -162,7 +163,7 @@ func (c *Connection) Stop() {
 	c.ExitBuffChan <- true
 
 	//将链接从连接管理器中删除
-	c.TcpServer.GetConnMgr().Remove(c)
+	c.TCPServer.GetConnMgr().Remove(c)
 
 	//关闭该链接全部管道
 	close(c.ExitBuffChan)
@@ -211,8 +212,7 @@ func (c *Connection) SendBuffMsg(data []byte) error {
 
 // SendMsgByConnID 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendMsgByConnID(connID uint32, data []byte) error {
-
-	conn, err := c.TcpServer.GetConnMgr().Get(connID)
+	conn, err := c.TCPServer.GetConnMgr().Get(connID)
 	if err != nil {
 		return errors.New("Connection closed when send msg")
 	}
@@ -285,4 +285,5 @@ func (c *Connection) RemoveProperty(key string) {
 	defer c.propertyLock.Unlock()
 
 	// delete(c.property, key)
+	c.status = 0
 }

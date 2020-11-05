@@ -8,20 +8,14 @@ import (
 	"gfep/zlog"
 	"gfep/znet"
 	"gfep/zptl"
-
-	// _ "net/http/pprof"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	// _ "net/http/pprof"
 )
-
-// type addrManager struct {
-// 	conns map[string][]ziface.IConnection //管理的连接信息
-// 	lock  sync.RWMutex                    //读写连接的读写锁
-// }
 
 type addrConnID struct {
 	addrStr string
