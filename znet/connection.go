@@ -13,6 +13,8 @@ import (
 
 // Connection connection
 type Connection struct {
+	//高并发下还是加个锁进行保护
+	sync.Mutex
 	//当前Conn属于哪个Server
 	TCPServer ziface.IServer
 	//当前连接的socket TCP套接字
@@ -152,6 +154,8 @@ func (c *Connection) Stop() {
 	if c.isClosed == true {
 		return
 	}
+	c.Lock()
+	defer c.Unlock()
 	c.isClosed = true
 
 	//如果用户注册了该链接的关闭回调业务，那么在此刻应该显示调用
@@ -169,6 +173,11 @@ func (c *Connection) Stop() {
 	close(c.ExitBuffChan)
 	close(c.msgBuffChan)
 	// c.property = nil
+}
+
+// IsStop 是否停止连接
+func (c *Connection) IsStop() bool {
+	return c.isClosed
 }
 
 // GetTCPConnection 从当前连接获取原始的socket TCPConn
@@ -192,6 +201,11 @@ func (c *Connection) SendMsg(data []byte) error {
 		return errors.New("Connection closed when send msg")
 	}
 
+	defer func() {
+		if err := recover(); err != nil {
+		}
+	}()
+
 	//写回客户端
 	c.msgChan <- data
 
@@ -204,7 +218,12 @@ func (c *Connection) SendBuffMsg(data []byte) error {
 		return errors.New("Connection closed when send buff msg")
 	}
 
-	//写回客户端
+	defer func() {
+		if err := recover(); err != nil {
+		}
+	}()
+
+	//写回客户端, 高并发下有可能msgBuffChan被关闭
 	c.msgBuffChan <- data
 
 	return nil

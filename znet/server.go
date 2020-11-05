@@ -5,6 +5,7 @@ import (
 	"gfep/utils"
 	"gfep/ziface"
 	"net"
+	"time"
 )
 
 var zinxLogo = `                                        
@@ -103,7 +104,8 @@ func (s *Server) Start() {
 			}
 
 			conn.SetKeepAlive(true)
-			// conn.SetNoDelay(tre)
+			conn.SetKeepAlivePeriod(time.Minute * 2)
+			conn.SetNoDelay(true)
 			conn.SetReadBuffer(2200)
 			conn.SetWriteBuffer(2200)
 

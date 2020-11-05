@@ -52,6 +52,11 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 		conn.Stop()
 		return
 	}
+	conn.Lock()
+	defer conn.Unlock()
+	if conn.IsStop() {
+		return
+	}
 	rData := request.GetData()
 	msaStr := strconv.Itoa(zptl.Ptl698_45MsaGet(rData))
 	tmnStr := zptl.Ptl698_45AddrStr(zptl.Ptl698_45AddrGet(rData))
