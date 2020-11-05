@@ -174,7 +174,7 @@ func (s *Server) CallOnConnStop(conn ziface.IConnection) {
 func init() {
 	fmt.Println(zinxLogo)
 	fmt.Println(topLine)
-	fmt.Println(fmt.Sprintf("%s [Github] https://github.com/liuning587/gFep       %s", borderLine, borderLine))
+	fmt.Println(fmt.Sprintf("%s [Github] https://github.com/liuning587/gfep       %s", borderLine, borderLine))
 	fmt.Println(bottomLine)
 	fmt.Printf("[gFep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
 		utils.GlobalObject.Version,

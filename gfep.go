@@ -9,7 +9,6 @@ import (
 	"gfep/znet"
 	"gfep/zptl"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -343,7 +342,7 @@ func usrInput() {
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	// runtime.GOMAXPROCS(runtime.NumCPU())
 
 	// go func() {
 	// 	log.Println(http.ListenAndServe("localhost:9999", nil))
