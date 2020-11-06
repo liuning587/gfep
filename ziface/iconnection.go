@@ -9,6 +9,7 @@ type IConnection interface {
 	//停止连接，结束当前连接状态M
 	Stop()
 	IsStop() bool
+	NeedStop()
 
 	//从当前连接获取原始的socket TCPConn
 	GetTCPConnection() *net.TCPConn

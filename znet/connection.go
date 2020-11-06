@@ -21,6 +21,7 @@ type Connection struct {
 	ConnID uint32
 	//当前连接的关闭状态
 	isClosed bool
+	needStop bool
 	//消息管理MsgId和对应处理方法的消息管理模块
 	MsgHandler ziface.IMsgHandle
 	//告知该链接已经退出/停止的channel
@@ -53,6 +54,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		Conn:         conn,
 		ConnID:       connID,
 		isClosed:     false,
+		needStop:     false,
 		MsgHandler:   msgHandler,
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
@@ -132,6 +134,9 @@ func (c *Connection) StartReader() {
 			break
 		}
 		ptlChk.Chkfrm(rbuf[0:rlen])
+		if c.needStop {
+			break
+		}
 	}
 }
 
@@ -173,7 +178,15 @@ func (c *Connection) Stop() {
 
 // IsStop 是否停止连接
 func (c *Connection) IsStop() bool {
+	if c.needStop {
+		return true
+	}
 	return c.isClosed
+}
+
+// NeedStop 需要停止连接
+func (c *Connection) NeedStop() {
+	c.needStop = true
 }
 
 // GetTCPConnection 从当前连接获取原始的socket TCPConn

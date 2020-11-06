@@ -52,7 +52,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 	}
 	connStatus, err := conn.GetProperty("status")
 	if err != nil {
-		conn.Stop()
+		conn.NeedStop()
 		return
 	}
 	rData := request.GetData()
@@ -177,7 +177,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			if utils.GlobalObject.SupportReplyHeart {
 				if connStatus != connT698 {
 					zlog.Error("终端未登录就发心跳", tmnStr)
-					conn.Stop()
+					conn.NeedStop()
 				} else {
 					preTmnStr, err := conn.GetProperty("addr")
 					if err == nil && preTmnStr == tmnStr {
@@ -194,7 +194,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 						}
 					} else {
 						zlog.Error("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
-						conn.Stop()
+						conn.NeedStop()
 					}
 				}
 				return
@@ -213,7 +213,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 					zlog.Error(err)
 				}
 			}
-			conn.Stop()
+			conn.NeedStop()
 			return
 
 		default:
