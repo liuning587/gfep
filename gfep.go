@@ -47,14 +47,12 @@ type PTL698_45Router struct {
 // Handle 698报文处理方法
 func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 	conn := request.GetConnection()
+	if conn.IsStop() {
+		return
+	}
 	connStatus, err := conn.GetProperty("status")
 	if err != nil {
 		conn.Stop()
-		return
-	}
-	conn.Lock()
-	defer conn.Unlock()
-	if conn.IsStop() {
 		return
 	}
 	rData := request.GetData()

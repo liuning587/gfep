@@ -4,10 +4,6 @@ import "net"
 
 // IConnection 定义连接接口
 type IConnection interface {
-	//锁操作
-	Lock()
-	Unlock()
-
 	//启动连接，让当前连接开始工作
 	Start()
 	//停止连接，结束当前连接状态M

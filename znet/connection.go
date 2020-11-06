@@ -13,8 +13,6 @@ import (
 
 // Connection connection
 type Connection struct {
-	//高并发下还是加个锁进行保护
-	sync.Mutex
 	//当前Conn属于哪个Server
 	TCPServer ziface.IServer
 	//当前连接的socket TCP套接字
@@ -154,8 +152,6 @@ func (c *Connection) Stop() {
 	if c.isClosed == true {
 		return
 	}
-	c.Lock()
-	defer c.Unlock()
 	c.isClosed = true
 
 	//如果用户注册了该链接的关闭回调业务，那么在此刻应该显示调用

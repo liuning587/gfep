@@ -3,7 +3,7 @@
   "Host":"0.0.0.0",
   "TCPPort":20083,
   "MaxConn":50000,
-  "WorkerPoolSize":10,
+  "WorkerPoolSize":0,
   "LogDir": "./log",
   "LogFile":"gfep.log",
   "LogDebugClose": true,
