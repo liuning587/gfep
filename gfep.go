@@ -23,9 +23,9 @@ type addrConnID struct {
 
 var (
 	appList *list.List
-	appLock sync.Mutex
+	appLock sync.RWMutex
 	tmnList *list.List
-	tmnLock sync.Mutex
+	tmnLock sync.RWMutex
 )
 
 const (
@@ -88,7 +88,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 
 		// zlog.Debug("后台登录", msaStr, "读取", tmnStr)
 		//寻找匹配的终端连接，进行转发
-		tmnLock.Lock()
+		tmnLock.RLock()
 		for e := tmnList.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端地址匹配要转发
@@ -101,7 +101,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 				}
 			}
 		}
-		tmnLock.Unlock()
+		tmnLock.RUnlock()
 	} else {
 		//from 终端
 		zlog.Debugf("T: % X\n", rData)
@@ -220,7 +220,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			break
 		}
 		//寻找对应APP进行转发
-		appLock.Lock()
+		appLock.RLock()
 		for e := appList.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端主动上报msa==0,所有后台都转发
@@ -232,7 +232,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 				}
 			}
 		}
-		appLock.Unlock()
+		appLock.RUnlock()
 	}
 }
 
@@ -246,7 +246,7 @@ func DoConnectionBegin(conn ziface.IConnection) {
 func DoConnectionLost(conn ziface.IConnection) {
 	connStatus, err := conn.GetProperty("status")
 	if err != nil {
-		return
+		panic("connStatus != err")
 	}
 
 	switch connStatus {
@@ -304,7 +304,7 @@ func usrInput() {
 		fmt.Println("Hi you input is", menu)
 		switch menu {
 		case 1:
-			tmnLock.Lock()
+			tmnLock.RLock()
 			var i int
 			var next *list.Element
 			for e := tmnList.Front(); e != nil; e = next {
@@ -315,9 +315,9 @@ func usrInput() {
 					i++
 				}
 			}
-			tmnLock.Unlock()
+			tmnLock.RUnlock()
 		case 2:
-			appLock.Lock()
+			appLock.RLock()
 			var i int
 			var next *list.Element
 			for e := appList.Front(); e != nil; e = next {
@@ -328,7 +328,7 @@ func usrInput() {
 					i++
 				}
 			}
-			appLock.Unlock()
+			appLock.RUnlock()
 		case 4:
 			fmt.Println("功能未实现!")
 		case 5:
