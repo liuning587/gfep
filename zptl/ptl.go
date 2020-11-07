@@ -39,10 +39,10 @@ var thePtlChkTab = [...]ptlChkTab{
 	{PTL_698_45, ptl698_45IsVaild},
 	{PTL_NW, ptlNwIsVaild},
 	{PTL_NWM, ptlNwmIsVaild},
-	{PTL_645_07, ptl645_07IsVaild},
-	{PTL_645_97, ptl645_97IsVaild},
 	{PTL_1376_1, ptl1376_1IsVaild},
-	{PTL_1376_2, ptl1376_2IsVaild},
+	// {PTL_645_07, ptl645_07IsVaild},
+	// {PTL_645_97, ptl645_97IsVaild},
+	// {PTL_1376_2, ptl1376_2IsVaild},
 	//todo: other plt
 }
 
