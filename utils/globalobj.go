@@ -104,7 +104,7 @@ func init() {
 		MaxConn:          50000,
 		MaxPacketSize:    2200,
 		ConfFilePath:     "conf/gfep.json",
-		WorkerPoolSize:   10,
+		WorkerPoolSize:   0,
 		MaxWorkerTaskLen: 1024,
 		MaxMsgChanLen:    8,
 		LogDir:           "./log",
