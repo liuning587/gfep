@@ -69,8 +69,8 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 
 // StartWriter 写消息Goroutine， 用户将数据发送给客户端
 func (c *Connection) StartWriter() {
-	fmt.Println("[Writer Goroutine is running]")
-	defer fmt.Println(c.RemoteAddr().String(), "[conn Writer exit!]")
+	// fmt.Println("[Writer Goroutine is running]")
+	// defer fmt.Println(c.RemoteAddr().String(), "[conn Writer exit!]")
 
 	for {
 		select {
@@ -121,9 +121,8 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 
 // StartReader 读消息Goroutine，用于从客户端中读取数据
 func (c *Connection) StartReader() {
-	fmt.Println("[Reader Goroutine is running]")
-	defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
-	defer c.Stop()
+	// fmt.Println("[Reader Goroutine is running]")
+	// defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
 
 	ptlChk := zptl.NewChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
 	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2, zptl.PmaxPtlFrameLen/2)
@@ -138,6 +137,7 @@ func (c *Connection) StartReader() {
 			break
 		}
 	}
+	c.Stop()
 }
 
 // Start 启动连接，让当前连接开始工作
@@ -152,7 +152,7 @@ func (c *Connection) Start() {
 
 // Stop 停止连接，结束当前连接状态M
 func (c *Connection) Stop() {
-	fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
+	// fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
 	//如果当前链接已经关闭
 	if c.isClosed == true {
 		return
