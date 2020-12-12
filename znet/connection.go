@@ -124,7 +124,7 @@ func (c *Connection) StartReader() {
 	// fmt.Println("[Reader Goroutine is running]")
 	// defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
 
-	ptlChk := zptl.NewChkfrm(zptl.PTL_698_45, 1000, cbRecvPacket, c)
+	ptlChk := zptl.NewChkfrm(zptl.PTL_698_45|zptl.PTL_NW, 1000, cbRecvPacket, c)
 	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2, zptl.PmaxPtlFrameLen/2)
 
 	for {
