@@ -150,7 +150,7 @@ func (c *Connection) Start() {
 	go c.StartWriter()
 }
 
-// Stop 停止连接，结束当前连接状态M
+// Stop 停止连接，结束当前连接状态
 func (c *Connection) Stop() {
 	// fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
 	//如果当前链接已经关闭

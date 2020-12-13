@@ -52,9 +52,8 @@ func (connMgr *ConnManager) Get(connID uint32) (ziface.IConnection, error) {
 
 	if conn, ok := connMgr.connections[connID]; ok {
 		return conn, nil
-	} else {
-		return nil, errors.New("connection not found")
 	}
+	return nil, errors.New("connection not found")
 }
 
 // Len 获取当前连接
