@@ -61,9 +61,13 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 	conn.SetProperty("rtime", time.Now()) //最近报文接收时间
 
 	if zptl.Ptl698_45GetDir(rData) == 0 {
-		zlog.Debugf("A: % X\n", rData)
 		//from app
+		if connStatus != connIdle && connStatus != connA698 {
+			conn.NeedStop()
+			return
+		}
 		conn.SetProperty("status", connA698)
+		zlog.Debugf("A: % X\n", rData)
 		isNewApp := true
 		appLock.Lock()
 		for e := appList.Front(); e != nil; e = e.Next() {
@@ -104,6 +108,11 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 		tmnLock.RUnlock()
 	} else {
 		//from 终端
+		if connStatus != connIdle && connStatus != connT698 {
+			conn.NeedStop()
+			return
+		}
+		conn.SetProperty("status", connT698)
 		zlog.Debugf("T: % X\n", rData)
 		switch zptl.Ptl698_45GetFrameType(rData) {
 		case zptl.LINK_LOGIN:
@@ -167,7 +176,6 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 				zlog.Error(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
-				conn.SetProperty("status", connT698)
 				conn.SetProperty("addr", tmnStr)
 				zlog.Debugf("L: % X\n", reply[0:len])
 			}
