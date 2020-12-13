@@ -48,7 +48,7 @@ func ptl698_45HeadIsVaild(buf []byte) int32 {
 }
 
 func ptl698_45IsVaild(buf []byte) int32 {
-	var flen uint16
+	var flen int32
 	var hlen uint16
 	var cs uint16
 
@@ -64,8 +64,11 @@ func ptl698_45IsVaild(buf []byte) int32 {
 		return 0
 	}
 
-	flen = (uint16(buf[2]&0x3f) << 8) + uint16(buf[1])
-	if (flen > PmaxPtlFrameLen-2) || (flen < 7) {
+	flen = (int32(buf[2]&0x3f) << 8) + int32(buf[1])
+	if buf[2]&0x40 != 0 {
+		flen *= 1024
+	}
+	if (flen > Pmax698PtlFrameLen-2) || (flen < 7) {
 		return -1
 	}
 

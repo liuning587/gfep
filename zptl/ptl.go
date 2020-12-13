@@ -27,7 +27,8 @@ const (
 
 //常量
 const (
-	PmaxPtlFrameLen = 2200 //最大报文长度
+	PmaxPtlFrameLen    = 2200       //最大报文长度
+	Pmax698PtlFrameLen = 256 * 1024 //最大报文长度(698物联版)
 )
 
 type ptlChkTab struct {
