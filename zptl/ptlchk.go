@@ -63,7 +63,11 @@ func (p *Chkfrm) Chkfrm(data []byte) int32 {
 
 	p.rtime = getTick()
 	if p.buf == nil {
-		p.buf = make([]byte, 0, PmaxPtlFrameLen)
+		if p.ptype&PTL_698_45 != 0 {
+			p.buf = make([]byte, 0)
+		} else {
+			p.buf = make([]byte, 0, PmaxPtlFrameLen)
+		}
 		if p.buf == nil {
 			return cnt
 		}
