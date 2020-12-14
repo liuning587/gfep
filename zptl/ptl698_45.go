@@ -7,7 +7,7 @@ import (
 )
 
 func ptl698_45HeadIsVaild(buf []byte) int32 {
-	var fLen uint16
+	var fLen int32
 	var hLen uint16
 	var cs uint16
 
@@ -23,8 +23,11 @@ func ptl698_45HeadIsVaild(buf []byte) int32 {
 		return 0
 	}
 
-	fLen = (uint16(buf[2]&0x3f) << 8) + uint16(buf[1])
-	if (fLen > PmaxPtlFrameLen-2) || (fLen < 7) {
+	fLen = (int32(buf[2]&0x3f) << 8) + int32(buf[1])
+	if buf[2]&0x40 != 0 {
+		fLen *= 1024
+	}
+	if (fLen > Pmax698PtlFrameLen-2) || (fLen < 7) {
 		return -1
 	}
 
@@ -48,7 +51,7 @@ func ptl698_45HeadIsVaild(buf []byte) int32 {
 }
 
 func ptl698_45IsVaild(buf []byte) int32 {
-	var flen int32
+	var fLen int32
 	var hlen uint16
 	var cs uint16
 
@@ -64,11 +67,11 @@ func ptl698_45IsVaild(buf []byte) int32 {
 		return 0
 	}
 
-	flen = (int32(buf[2]&0x3f) << 8) + int32(buf[1])
+	fLen = (int32(buf[2]&0x3f) << 8) + int32(buf[1])
 	if buf[2]&0x40 != 0 {
-		flen *= 1024
+		fLen *= 1024
 	}
-	if (flen > Pmax698PtlFrameLen-2) || (flen < 7) {
+	if (fLen > Pmax698PtlFrameLen-2) || (fLen < 7) {
 		return -1
 	}
 
@@ -88,24 +91,24 @@ func ptl698_45IsVaild(buf []byte) int32 {
 		return -1
 	}
 
-	if len(buf) < int(flen+1) {
+	if len(buf) < int(fLen+1) {
 		return 0
 	}
 
 	//check fcs
-	cs = Crc16Calculate(buf[1 : flen-1])
-	if cs != ((uint16(buf[flen]) << 8) + uint16(buf[flen-1])) {
+	cs = Crc16Calculate(buf[1 : fLen-1])
+	if cs != ((uint16(buf[fLen]) << 8) + uint16(buf[fLen-1])) {
 		return -1
 	}
 
-	if len(buf) < int(flen+2) {
+	if len(buf) < int(fLen+2) {
 		return 0
 	}
-	if 0x16 != buf[flen+1] {
+	if 0x16 != buf[fLen+1] {
 		return -1
 	}
 
-	return int32(flen + 2)
+	return int32(fLen + 2)
 }
 
 //--------------------------------------------------------------------
