@@ -72,9 +72,12 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 		appLock.Lock()
 		for e := appList.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
-			if ok && a.addrStr == msaStr {
-				a.connID = conn.GetConnID()
-				isNewApp = false
+			if ok && a.connID == conn.GetConnID() {
+				if a.addrStr != msaStr {
+					appList.Remove(e)
+				} else {
+					isNewApp = false
+				}
 				break
 			}
 		}
