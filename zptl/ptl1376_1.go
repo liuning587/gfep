@@ -93,11 +93,11 @@ func Ptl1376_1GetFrameType(buf []byte) int {
 
 	if buf[12] == 0x02 { //链路连接管理（登录，心跳，退出登录）
 		switch binary.BigEndian.Uint32(buf[14:18]) {
-		case 0x00000001:
+		case 0x00000100:
 			return LINK_LOGIN
-		case 0x00000002:
+		case 0x00000200:
 			return LINK_EXIT
-		case 0x00000004:
+		case 0x00000400:
 			return LINK_HAERTBEAT
 		default:
 			break
@@ -131,7 +131,7 @@ func Ptl1376_1BuildReplyPacket(in []byte, out []byte) int {
 	out[9] = in[9]
 	out[10] = in[10]
 
-	out[11] = 0x00                   //in[11] MSA
+	out[11] = 0x02                   //in[11] MSA
 	out[12] = 0x00                   //AFN
 	out[13] = 0x60 | (in[13] & 0x0f) //SEQ
 

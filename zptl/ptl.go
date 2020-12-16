@@ -71,16 +71,20 @@ func GetLen(data []byte) int32 {
 
 // IsVaild 判断报文释放合法
 func IsVaild(ptype uint32, data []byte) (int32, uint32) {
+	var ret int32 = -1 //默认不合法
 	for i := 0; i < len(thePtlChkTab); i++ {
 		if ptype&thePtlChkTab[i].ptype != 0 {
 			rlen := thePtlChkTab[i].isVaild(data)
-			if 0 <= rlen {
+			if 0 < rlen {
 				return rlen, thePtlChkTab[i].ptype
+			}
+			if rlen == 0 {
+				ret = 0
 			}
 		}
 	}
 
-	return -1, PTL_UNKNOW
+	return ret, PTL_UNKNOW
 }
 
 //判断是否为协议首字节
