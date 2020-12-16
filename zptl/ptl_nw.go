@@ -3,7 +3,6 @@ package zptl
 import (
 	"encoding/binary"
 	"fmt"
-	"strings"
 )
 
 func ptlNwIsVaild(buf []byte) int32 {
@@ -158,12 +157,7 @@ func PtlNwAddrStr(addr []byte) string {
 	if len(addr) == 6 {
 		return fmt.Sprintf("%02X%02X%02X-%02X%02X%02X", addr[2], addr[1], addr[0], addr[5], addr[4], addr[3])
 	}
-	var sa = make([]string, 0)
-	for _, v := range addr {
-		sa = append(sa, fmt.Sprintf("%02X", v))
-	}
-	ss := strings.Join(sa, "")
-	return ss
+	return ""
 }
 
 // PtlNwMsaCmp 主站MSA地址比较
