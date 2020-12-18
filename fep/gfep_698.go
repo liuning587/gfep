@@ -39,13 +39,13 @@ const (
 	connANW    = 7
 )
 
-// Ptl1376_1Router 376规约路由
-type Ptl1376_1Router struct {
+// PTL698_45Router 698规约路由
+type PTL698_45Router struct {
 	znet.BaseRouter
 }
 
-// Handle 376报文处理方法
-func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
+// Handle 698报文处理方法
+func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 	conn := request.GetConnection()
 	if conn.IsStop() {
 		return
@@ -56,17 +56,17 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 		return
 	}
 	rData := request.GetData()
-	msaStr := strconv.Itoa(zptl.Ptl1376_1MsaGet(rData))
-	tmnStr := zptl.Ptl1376_1AddrStr(zptl.Ptl1376_1AddrGet(rData))
+	msaStr := strconv.Itoa(zptl.Ptl698_45MsaGet(rData))
+	tmnStr := zptl.Ptl698_45AddrStr(zptl.Ptl698_45AddrGet(rData))
 	conn.SetProperty("rtime", time.Now()) //最近报文接收时间
 
-	if zptl.Ptl1376_1GetDir(rData) == 0 {
+	if zptl.Ptl698_45GetDir(rData) == 0 {
 		//from app
-		if connStatus != connIdle && connStatus != connA376 {
+		if connStatus != connIdle && connStatus != connA698 {
 			conn.NeedStop()
 			return
 		}
-		conn.SetProperty("status", connA376)
+		conn.SetProperty("status", connA698)
 		zlog.Debugf("A: % X\n", rData)
 		isNewApp := true
 		appLock.Lock()
@@ -88,7 +88,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 		}
 		appLock.Unlock()
 
-		if zptl.Ptl1376_1GetFrameType(rData) == zptl.ONLINE {
+		if zptl.Ptl698_45GetFrameType(rData) == zptl.ONLINE {
 			//todo: 处理app Online响应
 			return
 		}
@@ -111,13 +111,13 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 		tmnLock.RUnlock()
 	} else {
 		//from 终端
-		if connStatus != connIdle && connStatus != connT376 {
+		if connStatus != connIdle && connStatus != connT698 {
 			conn.NeedStop()
 			return
 		}
-		conn.SetProperty("status", connT376)
+		conn.SetProperty("status", connT698)
 		zlog.Debugf("T: % X\n", rData)
-		switch zptl.Ptl1376_1GetFrameType(rData) {
+		switch zptl.Ptl698_45GetFrameType(rData) {
 		case zptl.LINK_LOGIN:
 			if utils.GlobalObject.SupportCasLink {
 				//todo: 处理级联终端登陆
@@ -173,7 +173,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			}
 
 			reply := make([]byte, 128, 128)
-			len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
+			len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
 				zlog.Error(err)
@@ -186,7 +186,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 
 		case zptl.LINK_HAERTBEAT:
 			if utils.GlobalObject.SupportReplyHeart {
-				if connStatus != connT376 {
+				if connStatus != connT698 {
 					zlog.Error("终端未登录就发心跳", tmnStr)
 					conn.NeedStop()
 				} else {
@@ -196,7 +196,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 						zlog.Debug("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128, 128)
-						len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
+						len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
 							zlog.Error(err)
@@ -213,12 +213,12 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			break
 
 		case zptl.LINK_EXIT:
-			if connStatus != connT376 {
+			if connStatus != connT698 {
 				zlog.Error("终端未登录就想退出", tmnStr)
 			} else {
 				zlog.Debug("终端退出", tmnStr)
 				reply := make([]byte, 128, 128)
-				len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
+				len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
 					zlog.Error(err)
@@ -261,7 +261,7 @@ func DoConnectionLost(conn ziface.IConnection) {
 	}
 
 	switch connStatus {
-	case connT376:
+	case connT698:
 		tmnLock.Lock()
 		var next *list.Element
 		for e := tmnList.Front(); e != nil; e = next {
@@ -277,7 +277,7 @@ func DoConnectionLost(conn ziface.IConnection) {
 		tmnLock.Unlock()
 		break
 
-	case connA376:
+	case connA698:
 		appLock.Lock()
 		var next *list.Element
 		for e := appList.Front(); e != nil; e = next {
@@ -366,7 +366,7 @@ func main() {
 	// zlog.OpenDebug()
 	// zlog.ResetFlags(zlog.BitDefault | zlog.BitMicroSeconds)
 	// zlog.CloseDebug()
-	// go usrInput()
+	go usrInput()
 
 	appList = list.New()
 	tmnList = list.New()
@@ -379,7 +379,7 @@ func main() {
 	s.SetOnConnStop(DoConnectionLost)
 
 	//配置路由
-	s.AddRouter(zptl.PTL_1376_1, &Ptl1376_1Router{})
+	s.AddRouter(zptl.PTL_698_45, &PTL698_45Router{})
 
 	//开启服务
 	s.Serve()
