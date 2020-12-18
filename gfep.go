@@ -3,12 +3,14 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"gfep/timewriter"
 	"gfep/utils"
 	"gfep/ziface"
-	"gfep/zlog"
 	"gfep/znet"
 	"gfep/zptl"
+	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,6 +38,10 @@ var (
 	appNwLock sync.RWMutex
 	tmnNwList *list.List
 	tmnNwLock sync.RWMutex
+
+	log376 *log.Logger
+	log698 *log.Logger
+	logNw  *log.Logger
 )
 
 const (
@@ -77,7 +83,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			return
 		}
 		conn.SetProperty("status", connA376)
-		zlog.Debugf("A: % X\n", rData)
+		log376.Printf("A: % X\n", rData)
 		isNewApp := true
 		app376Lock.Lock()
 		for e := app376List.Front(); e != nil; e = e.Next() {
@@ -94,7 +100,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 		if isNewApp {
 			app376List.PushBack(addrConnID{msaStr, conn.GetConnID()})
 			conn.SetProperty("addr", msaStr)
-			zlog.Debug("后台登录", msaStr, "connID", conn.GetConnID())
+			log376.Println("后台登录", msaStr, "connID", conn.GetConnID())
 		}
 		app376Lock.Unlock()
 
@@ -103,7 +109,6 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			return
 		}
 
-		// zlog.Debug("后台登录", msaStr, "读取", tmnStr)
 		//寻找匹配的终端连接，进行转发
 		tmn376Lock.RLock()
 		for e := tmn376List.Front(); e != nil; e = e.Next() {
@@ -111,7 +116,6 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
 			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
-				// zlog.Debug("后台", msaStr, "转发", tmnStr)
 				err := conn.SendMsgByConnID(a.connID, rData)
 				if err != nil {
 					//todo: 异常处理
@@ -126,7 +130,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			return
 		}
 		conn.SetProperty("status", connT376)
-		zlog.Debugf("T: % X\n", rData)
+		log376.Printf("T: % X\n", rData)
 		switch zptl.Ptl1376_1GetFrameType(rData) {
 		case zptl.LINK_LOGIN:
 			if utils.GlobalObject.SupportCasLink {
@@ -148,7 +152,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 							break
 						}
 						if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
-							zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
+							log376.Println("终端重复登录", tmnStr, "删除", a.connID)
 							//todo: 清除级联
 							tmn376List.Remove(e)
 						}
@@ -165,7 +169,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 						if utils.GlobalObject.SupportCasLink != true {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
-								zlog.Debug("终端登录地址发生变更", tmnStr, "删除", a.connID)
+								log376.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
 								tmn376List.Remove(e)
 							}
 						}
@@ -173,48 +177,48 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 				}
 				if isNewTmn {
 					tmn376List.PushBack(addrConnID{tmnStr, conn.GetConnID()})
-					zlog.Debug("终端登录", tmnStr, "connID", conn.GetConnID())
+					log376.Println("终端登录", tmnStr, "connID", conn.GetConnID())
 				} else {
-					zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
+					log376.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 				}
 				tmn376Lock.Unlock()
 			} else {
-				zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
+				log376.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
 
 			reply := make([]byte, 128, 128)
 			len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
-				zlog.Error(err)
+				log376.Println(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("addr", tmnStr)
-				zlog.Debugf("L: % X\n", reply[0:len])
+				log376.Printf("L: % X\n", reply[0:len])
 			}
 			return
 
 		case zptl.LINK_HAERTBEAT:
 			if utils.GlobalObject.SupportReplyHeart {
 				if connStatus != connT376 {
-					zlog.Error("终端未登录就发心跳", tmnStr)
+					log376.Println("终端未登录就发心跳", tmnStr)
 					conn.NeedStop()
 				} else {
 					preTmnStr, err := conn.GetProperty("addr")
 					if err == nil && preTmnStr == tmnStr {
 						//todo: 级联心跳时, 需判断级联地址是否存在
-						zlog.Debug("终端心跳", tmnStr)
+						log376.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128, 128)
 						len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
-							zlog.Error(err)
+							log376.Println(err)
 						} else {
-							zlog.Debugf("H: % X", reply[0:len])
+							log376.Printf("H: % X", reply[0:len])
 						}
 					} else {
-						zlog.Error("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
+						log376.Println("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
 						conn.NeedStop()
 					}
 				}
@@ -224,14 +228,14 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 
 		case zptl.LINK_EXIT:
 			if connStatus != connT376 {
-				zlog.Error("终端未登录就想退出", tmnStr)
+				log376.Println("终端未登录就想退出", tmnStr)
 			} else {
-				zlog.Debug("终端退出", tmnStr)
+				log376.Println("终端退出", tmnStr)
 				reply := make([]byte, 128, 128)
 				len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
-					zlog.Error(err)
+					log376.Println(err)
 				}
 			}
 			conn.NeedStop()
@@ -285,7 +289,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			return
 		}
 		conn.SetProperty("status", connA698)
-		zlog.Debugf("A: % X\n", rData)
+		log698.Printf("A: % X\n", rData)
 		isNewApp := true
 		app698Lock.Lock()
 		for e := app698List.Front(); e != nil; e = e.Next() {
@@ -302,7 +306,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 		if isNewApp {
 			app698List.PushBack(addrConnID{msaStr, conn.GetConnID()})
 			conn.SetProperty("addr", msaStr)
-			zlog.Debug("后台登录", msaStr, "connID", conn.GetConnID())
+			log698.Println("后台登录", msaStr, "connID", conn.GetConnID())
 		}
 		app698Lock.Unlock()
 
@@ -311,7 +315,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			return
 		}
 
-		// zlog.Debug("后台登录", msaStr, "读取", tmnStr)
+		// log698.Println("后台登录", msaStr, "读取", tmnStr)
 		//寻找匹配的终端连接，进行转发
 		tmn698Lock.RLock()
 		for e := tmn698List.Front(); e != nil; e = e.Next() {
@@ -319,7 +323,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
 			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
-				// zlog.Debug("后台", msaStr, "转发", tmnStr)
+				// log698.Println("后台", msaStr, "转发", tmnStr)
 				err := conn.SendMsgByConnID(a.connID, rData)
 				if err != nil {
 					//todo: 异常处理
@@ -334,7 +338,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			return
 		}
 		conn.SetProperty("status", connT698)
-		zlog.Debugf("T: % X\n", rData)
+		log698.Printf("T: % X\n", rData)
 		switch zptl.Ptl698_45GetFrameType(rData) {
 		case zptl.LINK_LOGIN:
 			if utils.GlobalObject.SupportCasLink {
@@ -356,7 +360,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 							break
 						}
 						if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
-							zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
+							log698.Println("终端重复登录", tmnStr, "删除", a.connID)
 							//todo: 清除级联
 							tmn698List.Remove(e)
 						}
@@ -373,7 +377,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 						if utils.GlobalObject.SupportCasLink != true {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
-								zlog.Debug("终端登录地址发生变更", tmnStr, "删除", a.connID)
+								log698.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
 								tmn698List.Remove(e)
 							}
 						}
@@ -381,48 +385,48 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 				}
 				if isNewTmn {
 					tmn698List.PushBack(addrConnID{tmnStr, conn.GetConnID()})
-					zlog.Debug("终端登录", tmnStr, "connID", conn.GetConnID())
+					log698.Println("终端登录", tmnStr, "connID", conn.GetConnID())
 				} else {
-					zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
+					log698.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 				}
 				tmn698Lock.Unlock()
 			} else {
-				zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
+				log698.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
 
 			reply := make([]byte, 128, 128)
 			len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
-				zlog.Error(err)
+				log698.Println(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("addr", tmnStr)
-				zlog.Debugf("L: % X\n", reply[0:len])
+				log698.Printf("L: % X\n", reply[0:len])
 			}
 			return
 
 		case zptl.LINK_HAERTBEAT:
 			if utils.GlobalObject.SupportReplyHeart {
 				if connStatus != connT698 {
-					zlog.Error("终端未登录就发心跳", tmnStr)
+					log698.Println("终端未登录就发心跳", tmnStr)
 					conn.NeedStop()
 				} else {
 					preTmnStr, err := conn.GetProperty("addr")
 					if err == nil && preTmnStr == tmnStr {
 						//todo: 级联心跳时, 需判断级联地址是否存在
-						zlog.Debug("终端心跳", tmnStr)
+						log698.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128, 128)
 						len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
-							zlog.Error(err)
+							log698.Println(err)
 						} else {
-							zlog.Debugf("H: % X", reply[0:len])
+							log698.Printf("H: % X", reply[0:len])
 						}
 					} else {
-						zlog.Error("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
+						log698.Println("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
 						conn.NeedStop()
 					}
 				}
@@ -432,14 +436,14 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 
 		case zptl.LINK_EXIT:
 			if connStatus != connT698 {
-				zlog.Error("终端未登录就想退出", tmnStr)
+				log698.Println("终端未登录就想退出", tmnStr)
 			} else {
-				zlog.Debug("终端退出", tmnStr)
+				log698.Println("终端退出", tmnStr)
 				reply := make([]byte, 128, 128)
 				len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
-					zlog.Error(err)
+					log698.Println(err)
 				}
 			}
 			conn.NeedStop()
@@ -493,7 +497,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			return
 		}
 		conn.SetProperty("status", connANW)
-		zlog.Debugf("A: % X\n", rData)
+		logNw.Printf("A: % X\n", rData)
 		isNewApp := true
 		appNwLock.Lock()
 		for e := appNwList.Front(); e != nil; e = e.Next() {
@@ -510,7 +514,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 		if isNewApp {
 			appNwList.PushBack(addrConnID{msaStr, conn.GetConnID()})
 			conn.SetProperty("addr", msaStr)
-			zlog.Debug("后台登录", msaStr, "connID", conn.GetConnID())
+			logNw.Println("后台登录", msaStr, "connID", conn.GetConnID())
 		}
 		appNwLock.Unlock()
 
@@ -519,7 +523,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			return
 		}
 
-		// zlog.Debug("后台登录", msaStr, "读取", tmnStr)
+		// logNw.Println("后台登录", msaStr, "读取", tmnStr)
 		//寻找匹配的终端连接，进行转发
 		tmnNwLock.RLock()
 		for e := tmnNwList.Front(); e != nil; e = e.Next() {
@@ -527,7 +531,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
 			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
-				// zlog.Debug("后台", msaStr, "转发", tmnStr)
+				// logNw.Println("后台", msaStr, "转发", tmnStr)
 				err := conn.SendMsgByConnID(a.connID, rData)
 				if err != nil {
 					//todo: 异常处理
@@ -542,7 +546,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			return
 		}
 		conn.SetProperty("status", connTNW)
-		zlog.Debugf("T: % X\n", rData)
+		logNw.Printf("T: % X\n", rData)
 		switch zptl.PtlNwGetFrameType(rData) {
 		case zptl.LINK_LOGIN:
 			if utils.GlobalObject.SupportCasLink {
@@ -564,7 +568,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 							break
 						}
 						if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
-							zlog.Debug("终端重复登录", tmnStr, "删除", a.connID)
+							logNw.Println("终端重复登录", tmnStr, "删除", a.connID)
 							//todo: 清除级联
 							tmnNwList.Remove(e)
 						}
@@ -581,7 +585,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 						if utils.GlobalObject.SupportCasLink != true {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
-								zlog.Debug("终端登录地址发生变更", tmnStr, "删除", a.connID)
+								logNw.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
 								tmnNwList.Remove(e)
 							}
 						}
@@ -589,48 +593,48 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 				}
 				if isNewTmn {
 					tmnNwList.PushBack(addrConnID{tmnStr, conn.GetConnID()})
-					zlog.Debug("终端登录", tmnStr, "connID", conn.GetConnID())
+					logNw.Println("终端登录", tmnStr, "connID", conn.GetConnID())
 				} else {
-					zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
+					logNw.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 				}
 				tmnNwLock.Unlock()
 			} else {
-				zlog.Debug("终端重新登录", tmnStr, "connID", conn.GetConnID())
+				logNw.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
 
 			reply := make([]byte, 128, 128)
 			len := zptl.PtlNwBuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
-				zlog.Error(err)
+				logNw.Println(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("addr", tmnStr)
-				zlog.Debugf("L: % X\n", reply[0:len])
+				logNw.Printf("L: % X\n", reply[0:len])
 			}
 			return
 
 		case zptl.LINK_HAERTBEAT:
 			if utils.GlobalObject.SupportReplyHeart {
 				if connStatus != connTNW {
-					zlog.Error("终端未登录就发心跳", tmnStr)
+					logNw.Println("终端未登录就发心跳", tmnStr)
 					conn.NeedStop()
 				} else {
 					preTmnStr, err := conn.GetProperty("addr")
 					if err == nil && preTmnStr == tmnStr {
 						//todo: 级联心跳时, 需判断级联地址是否存在
-						zlog.Debug("终端心跳", tmnStr)
+						logNw.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128, 128)
 						len := zptl.PtlNwBuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
-							zlog.Error(err)
+							logNw.Println(err)
 						} else {
-							zlog.Debugf("H: % X", reply[0:len])
+							logNw.Printf("H: % X", reply[0:len])
 						}
 					} else {
-						zlog.Error("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
+						logNw.Println("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
 						conn.NeedStop()
 					}
 				}
@@ -640,14 +644,14 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 
 		case zptl.LINK_EXIT:
 			if connStatus != connTNW {
-				zlog.Error("终端未登录就想退出", tmnStr)
+				logNw.Println("终端未登录就想退出", tmnStr)
 			} else {
-				zlog.Debug("终端退出", tmnStr)
+				logNw.Println("终端退出", tmnStr)
 				reply := make([]byte, 128, 128)
 				len := zptl.PtlNwBuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
-					zlog.Error(err)
+					logNw.Println(err)
 				}
 			}
 			conn.NeedStop()
@@ -887,6 +891,29 @@ func usrInput() {
 	}
 }
 
+func logInit() {
+	log376 = log.New(&timewriter.TimeWriter{
+		Dir:        utils.GlobalObject.LogDir,
+		Compress:   true,
+		ReserveDay: 30,
+		ModuleName: "376",
+	}, "", log.LstdFlags)
+
+	log698 = log.New(&timewriter.TimeWriter{
+		Dir:        utils.GlobalObject.LogDir,
+		Compress:   true,
+		ReserveDay: 30,
+		ModuleName: "698",
+	}, "", log.LstdFlags)
+
+	logNw = log.New(&timewriter.TimeWriter{
+		Dir:        utils.GlobalObject.LogDir,
+		Compress:   true,
+		ReserveDay: 30,
+		ModuleName: "nw",
+	}, "", log.LstdFlags)
+}
+
 func main() {
 	// runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -894,13 +921,9 @@ func main() {
 	// 	log.Println(http.ListenAndServe("localhost:9999", nil))
 	// }()
 
-	// zlog.SetLogFile("./log", "gfep.log")
-	// zlog.OpenDebug()
-	// zlog.ResetFlags(zlog.BitDefault | zlog.BitMicroSeconds)
-	// zlog.CloseDebug()
-	zlog.ResetFlags(zlog.BitStdFlag)
-
-	go usrInput()
+	if runtime.GOOS != "linux" {
+		go usrInput()
+	}
 
 	app698List = list.New()
 	tmn698List = list.New()
@@ -910,6 +933,7 @@ func main() {
 
 	appNwList = list.New()
 	tmnNwList = list.New()
+	logInit()
 
 	//创建一个server句柄
 	s := znet.NewServer()
