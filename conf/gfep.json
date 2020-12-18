@@ -5,7 +5,7 @@
   "MaxConn":50000,
   "WorkerPoolSize":0,
   "LogDir": "./log",
-  "LogFile":"gfep.log",
+  "LogFile":"",
   "LogDebugClose": true,
   "Timeout": 30,
   "SupportCompress":     false,
