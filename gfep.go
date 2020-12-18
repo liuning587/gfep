@@ -870,6 +870,8 @@ func usrInput() {
 				}
 			}
 			appNwLock.RUnlock()
+		case 3:
+			fmt.Println("V0.0.1")
 		case 4:
 			fmt.Println("功能未实现!")
 		case 5:
@@ -896,6 +898,8 @@ func main() {
 	// zlog.OpenDebug()
 	// zlog.ResetFlags(zlog.BitDefault | zlog.BitMicroSeconds)
 	// zlog.CloseDebug()
+	zlog.ResetFlags(zlog.BitStdFlag)
+
 	go usrInput()
 
 	app698List = list.New()
