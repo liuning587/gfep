@@ -178,7 +178,7 @@ func init() {
 	fmt.Println(topLine)
 	fmt.Println(fmt.Sprintf("%s [Github] https://github.com/liuning587/gfep       %s", borderLine, borderLine))
 	fmt.Println(bottomLine)
-	fmt.Printf("[gFep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
+	fmt.Printf("[gfep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
 		utils.GlobalObject.Version,
 		utils.GlobalObject.MaxConn,
 		utils.GlobalObject.MaxPacketSize)

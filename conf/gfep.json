@@ -1,5 +1,5 @@
 {
-  "Name":"gFep",
+  "Name":"gfep",
   "Host":"0.0.0.0",
   "TCPPort":20083,
   "MaxConn":50000,
