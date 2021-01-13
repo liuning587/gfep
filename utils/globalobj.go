@@ -98,7 +98,7 @@ func init() {
 	//初始化GlobalObject变量，设置一些默认值
 	GlobalObject = &GlobalObj{
 		Name:             "gfep",
-		Version:          "V0.1",
+		Version:          "V0.2",
 		TCPPort:          20083,
 		Host:             "0.0.0.0",
 		MaxConn:          50000,
