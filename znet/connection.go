@@ -59,8 +59,8 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		MsgHandler:          msgHandler,
 		ExitBuffChan:        make(chan bool, 1),
 		msgChan:             make(chan []byte),
-		msgBuffChanIsClosed: false,
 		msgBuffChan:         make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		msgBuffChanIsClosed: false,
 		// property:     make(map[string]interface{}),
 	}
 
@@ -88,8 +88,8 @@ func (c *Connection) StartWriter() {
 			if ok {
 				//有数据要写给客户端
 				if _, err := c.Conn.Write(data); err != nil {
-					c.Conn.Close()
 					c.closeMsgBuffChan()
+					c.Conn.Close()
 					fmt.Println("Send Buff Data error:, ", err, " Conn Writer exit")
 					return
 				}
@@ -159,8 +159,8 @@ func (c *Connection) closeMsgBuffChan() {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
 	if c.msgBuffChanIsClosed != true {
-		close(c.msgBuffChan)
 		c.msgBuffChanIsClosed = true
+		close(c.msgBuffChan)
 	}
 }
 
