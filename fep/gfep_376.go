@@ -102,10 +102,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			//2. 广播/通配地址需要转发
 			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
 				// zlog.Debug("后台", msaStr, "转发", tmnStr)
-				err := conn.SendMsgByConnID(a.connID, rData)
-				if err != nil {
-					//todo: 异常处理
-				}
+				go conn.SendMsgByConnID(a.connID, rData)
 			}
 		}
 		tmnLock.RUnlock()
@@ -237,10 +234,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			//1. 终端主动上报msa==0,所有后台都转发
 			//2. 后台msa为匹配要转发
 			if ok && (msaStr == "0" || a.addrStr == msaStr) {
-				err := conn.SendMsgByConnID(a.connID, rData)
-				if err != nil {
-					//todo: 异常处理
-				}
+				go conn.SendMsgByConnID(a.connID, rData)
 			}
 		}
 		appLock.RUnlock()
