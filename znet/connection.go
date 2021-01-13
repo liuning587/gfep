@@ -29,7 +29,8 @@ type Connection struct {
 	//无缓冲管道，用于读、写两个goroutine之间的消息通信
 	msgChan chan []byte
 	//有缓冲管道，用于读、写两个goroutine之间的消息通信
-	msgBuffChan chan []byte
+	msgBuffChan         chan []byte
+	msgBuffChanIsClosed bool
 
 	//链接属性
 	// property map[string]interface{}
@@ -50,15 +51,16 @@ type Connection struct {
 func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	//初始化Conn属性
 	c := &Connection{
-		TCPServer:    server,
-		Conn:         conn,
-		ConnID:       connID,
-		isClosed:     false,
-		needStop:     false,
-		MsgHandler:   msgHandler,
-		ExitBuffChan: make(chan bool, 1),
-		msgChan:      make(chan []byte),
-		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		TCPServer:           server,
+		Conn:                conn,
+		ConnID:              connID,
+		isClosed:            false,
+		needStop:            false,
+		MsgHandler:          msgHandler,
+		ExitBuffChan:        make(chan bool, 1),
+		msgChan:             make(chan []byte),
+		msgBuffChanIsClosed: false,
+		msgBuffChan:         make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 		// property:     make(map[string]interface{}),
 	}
 
@@ -77,6 +79,7 @@ func (c *Connection) StartWriter() {
 		case data := <-c.msgChan:
 			//有数据要写给客户端
 			if _, err := c.Conn.Write(data); err != nil {
+				c.Conn.Close()
 				fmt.Println("Send Data error:, ", err, " Conn Writer exit")
 				return
 			}
@@ -85,6 +88,8 @@ func (c *Connection) StartWriter() {
 			if ok {
 				//有数据要写给客户端
 				if _, err := c.Conn.Write(data); err != nil {
+					c.Conn.Close()
+					c.closeMsgBuffChan()
 					fmt.Println("Send Buff Data error:, ", err, " Conn Writer exit")
 					return
 				}
@@ -150,6 +155,15 @@ func (c *Connection) Start() {
 	go c.StartWriter()
 }
 
+func (c *Connection) closeMsgBuffChan() {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	if c.msgBuffChanIsClosed != true {
+		close(c.msgBuffChan)
+		c.msgBuffChanIsClosed = true
+	}
+}
+
 // Stop 停止连接，结束当前连接状态
 func (c *Connection) Stop() {
 	// fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
@@ -172,7 +186,7 @@ func (c *Connection) Stop() {
 
 	//关闭该链接全部管道
 	close(c.ExitBuffChan)
-	close(c.msgBuffChan)
+	c.closeMsgBuffChan()
 	// c.property = nil
 }
 
