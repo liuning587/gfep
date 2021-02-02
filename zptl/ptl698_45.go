@@ -124,7 +124,7 @@ func Ptl698_45GetDir(buf []byte) int {
 // Ptl698_45GetFrameType 获取报文类型
 func Ptl698_45GetFrameType(buf []byte) int {
 	if buf[3]&0x07 == 0x01 { //链路连接管理（登录，心跳，退出登录）
-		switch buf[7+buf[4]+2+2] {
+		switch buf[7+buf[4]&0x0f+2+2] { //todo: check
 		case 0:
 			return LINK_LOGIN
 		case 1:
@@ -223,7 +223,7 @@ func Ptl698_45AddrCmp(addr []byte, buf []byte) bool {
 
 // Ptl698_45AddrGet 从报文中取出终端地址
 func Ptl698_45AddrGet(buf []byte) []byte {
-	return buf[4 : 4+(buf[4]&0x0f)+2]
+	return append([]byte{buf[4] & 0x0f}, buf[5:5+(buf[4]&0x0f)+1]...)
 }
 
 // Ptl698_45AddrStr 获取终端字符串
