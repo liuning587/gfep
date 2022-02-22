@@ -95,6 +95,10 @@ func (g *GlobalObj) Reload() {
 
 // 提供init方法，默认加载
 func init() {
+	pwd, err := os.Getwd()
+	if err != nil {
+		pwd = "."
+	}
 	//初始化GlobalObject变量，设置一些默认值
 	GlobalObject = &GlobalObj{
 		Name:             "gfep",
@@ -103,11 +107,11 @@ func init() {
 		Host:             "0.0.0.0",
 		MaxConn:          50000,
 		MaxPacketSize:    2200,
-		ConfFilePath:     "conf/gfep.json",
+		ConfFilePath:     pwd+"/conf/gfep.json",
 		WorkerPoolSize:   0,
 		MaxWorkerTaskLen: 1024,
 		MaxMsgChanLen:    8,
-		LogDir:           "./log",
+		LogDir:           pwd+"/log",
 		LogFile:          "",
 		LogDebugClose:    false,
 
