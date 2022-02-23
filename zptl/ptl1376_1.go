@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func ptl1376_1IsVaild(buf []byte) int32 {
+func ptl1376_1IsValid(buf []byte) int32 {
 	if len(buf) < 1 {
 		return 0
 	}

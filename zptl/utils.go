@@ -103,7 +103,7 @@ func Hex2Str(data []byte) string {
 	str := make([]byte, len(data)*2)
 
 	for i, v := range data {
-		str[i*2+0] = (uint8(v) >> 4) + '0'
+		str[i*2+0] = (v >> 4) + '0'
 		str[i*2+1] = (uint8(v) & 0x0f) + '0'
 	}
 
@@ -165,7 +165,7 @@ func PrintBuf(offset uint32, data []byte) {
 		}
 		fmt.Printf(" ")
 
-		bytes[lineBytes] = uint8(v)
+		bytes[lineBytes] = v
 		fmt.Printf("%02X", bytes[lineBytes])
 		lineBytes++
 

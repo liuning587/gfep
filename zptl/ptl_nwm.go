@@ -3,7 +3,7 @@ package zptl
 // 88 01 00 25 68 1D 00 1D 00 68 4B 23 00 00 11 11 21 49 0D 74 02 01 00 FF 01
 // 00 20 19 03 07 00 00 20 19 03 07 14 00 00 18 16 77
 
-func ptlNwmIsVaild(buf []byte) int32 {
+func ptlNwmIsValid(buf []byte) int32 {
 	if len(buf) < 1 {
 		return 0
 	}

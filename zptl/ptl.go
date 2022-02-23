@@ -33,24 +33,24 @@ const (
 
 type ptlChkTab struct {
 	ptype   uint32
-	isVaild func([]byte) int32
+	isValid func([]byte) int32
 }
 
 var thePtlChkTab = [...]ptlChkTab{
-	{PTL_698_45, ptl698_45IsVaild},
-	{PTL_NW, ptlNwIsVaild},
-	{PTL_NWM, ptlNwmIsVaild},
-	{PTL_1376_1, ptl1376_1IsVaild},
-	// {PTL_645_07, ptl645_07IsVaild},
-	// {PTL_645_97, ptl645_97IsVaild},
-	// {PTL_1376_2, ptl1376_2IsVaild},
+	{PTL_698_45, ptl698_45IsValid},
+	{PTL_NW, ptlNwIsValid},
+	{PTL_NWM, ptlNwmIsValid},
+	{PTL_1376_1, ptl1376_1IsValid},
+	// {PTL_645_07, ptl645_07IsValid},
+	// {PTL_645_97, ptl645_97IsValid},
+	// {PTL_1376_2, ptl1376_2IsValid},
 	//todo: other plt
 }
 
 // GetType 获取报文类型
 func GetType(data []byte) uint32 {
 	for i := 0; i < len(thePtlChkTab); i++ {
-		if 0 < thePtlChkTab[i].isVaild(data) {
+		if 0 < thePtlChkTab[i].isValid(data) {
 			return thePtlChkTab[i].ptype
 		}
 	}
@@ -61,7 +61,7 @@ func GetType(data []byte) uint32 {
 // GetLen 获取报文长度
 func GetLen(data []byte) int32 {
 	for i := 0; i < len(thePtlChkTab); i++ {
-		rlen := thePtlChkTab[i].isVaild(data)
+		rlen := thePtlChkTab[i].isValid(data)
 		if 0 < rlen {
 			return rlen
 		}
@@ -69,12 +69,12 @@ func GetLen(data []byte) int32 {
 	return 0
 }
 
-// IsVaild 判断报文释放合法
-func IsVaild(ptype uint32, data []byte) (int32, uint32) {
+// IsValid 判断报文释放合法
+func IsValid(ptype uint32, data []byte) (int32, uint32) {
 	var ret int32 = -1 //默认不合法
 	for i := 0; i < len(thePtlChkTab); i++ {
 		if ptype&thePtlChkTab[i].ptype != 0 {
-			rlen := thePtlChkTab[i].isVaild(data)
+			rlen := thePtlChkTab[i].isValid(data)
 			if 0 < rlen {
 				return rlen, thePtlChkTab[i].ptype
 			}
@@ -107,7 +107,7 @@ func isFirstByte(ptype uint32, head byte) bool {
 //findFirstByte 获取指定协议报文首字节偏移
 func findFirstByte(ptype uint32, data []byte) int32 {
 	var i int32
-	var dlen int32 = int32(len(data))
+	var dlen = int32(len(data))
 
 	if ptype&(PTL_NWM|PTL_SSAL) != 0 {
 		for i = 0; i < dlen; i++ {
@@ -157,7 +157,7 @@ func Check(ptype uint32, data []byte) (int32, int32, uint32) {
 			return -1, 0, PTL_UNKNOW //最后1个字节是(68,88,98)
 		}
 
-		rlen, ptype := IsVaild(ptype, data[pos:])
+		rlen, ptype := IsValid(ptype, data[pos:])
 		if rlen >= 0 {
 			return pos, rlen, ptype
 		}

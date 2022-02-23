@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func ptl698_45HeadIsVaild(buf []byte) int32 {
+func ptl698_45HeadIsValid(buf []byte) int32 {
 	var fLen int32
 	var hLen uint16
 	var cs uint16
@@ -50,7 +50,7 @@ func ptl698_45HeadIsVaild(buf []byte) int32 {
 	return int32(hLen + 2)
 }
 
-func ptl698_45IsVaild(buf []byte) int32 {
+func ptl698_45IsValid(buf []byte) int32 {
 	var fLen int32
 	var hlen uint16
 	var cs uint16
@@ -251,7 +251,7 @@ func Ptl698_45IsMsaValid(msa int) bool {
 	return msa != 0
 }
 
-// Ptl698_45BuildLoginPacket 创建登录包
+// Ptl698_45BuildPacket 创建登录包
 // tp: 0-登录  1-心跳 2-退出
 // 登录: 68 1E 00 81 05 01 00 00 00 00 00 00 D2 B6 01 00 00 01 2C 07 E6 02 17 03 08 06 38 03 22 1C BC 16
 // 确认: 68 30 00 01 05 01 00 00 00 00 00 00 52 D9 81 00 00 07 E6 02 17 03 08 05 02 02 F9 07 E6 02 17 03 08 06 09 00 32 07 E6 02 17 03 08 06 09 00 32 F0 E7 16

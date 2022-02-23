@@ -185,14 +185,14 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			}
 
 			reply := make([]byte, 128)
-			len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
-			err = conn.SendBuffMsg(reply[0:len])
+			plen := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
+			err = conn.SendBuffMsg(reply[0:plen])
 			if err != nil {
 				log376.Println(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("addr", tmnStr)
-				log376.Printf("L: % X\n", reply[0:len])
+				log376.Printf("L: % X\n", reply[0:plen])
 			}
 			return
 
@@ -208,12 +208,12 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 						log376.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128)
-						len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
-						err := conn.SendBuffMsg(reply[0:len])
+						plen := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
+						err := conn.SendBuffMsg(reply[0:plen])
 						if err != nil {
 							log376.Println(err)
 						} else {
-							log376.Printf("H: % X", reply[0:len])
+							log376.Printf("H: % X", reply[0:plen])
 						}
 					} else {
 						log376.Println("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
@@ -229,8 +229,8 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			} else {
 				log376.Println("终端退出", tmnStr)
 				reply := make([]byte, 128)
-				len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
-				err := conn.SendMsg(reply[0:len])
+				plen := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
+				err := conn.SendMsg(reply[0:plen])
 				if err != nil {
 					log376.Println(err)
 				}
@@ -412,14 +412,14 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			}
 
 			reply := make([]byte, 128)
-			len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
-			err = conn.SendBuffMsg(reply[0:len])
+			plen := zptl.Ptl698_45BuildReplyPacket(rData, reply)
+			err = conn.SendBuffMsg(reply[0:plen])
 			if err != nil {
 				log698.Println(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("addr", tmnStr)
-				log698.Printf("L: % X\n", reply[0:len])
+				log698.Printf("L: % X\n", reply[0:plen])
 			}
 			return
 
@@ -435,12 +435,12 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 						log698.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128)
-						len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
-						err := conn.SendBuffMsg(reply[0:len])
+						plen := zptl.Ptl698_45BuildReplyPacket(rData, reply)
+						err := conn.SendBuffMsg(reply[0:plen])
 						if err != nil {
 							log698.Println(err)
 						} else {
-							log698.Printf("H: % X", reply[0:len])
+							log698.Printf("H: % X", reply[0:plen])
 						}
 					} else {
 						log698.Println("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
@@ -456,8 +456,8 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			} else {
 				log698.Println("终端退出", tmnStr)
 				reply := make([]byte, 128)
-				len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
-				err := conn.SendMsg(reply[0:len])
+				plen := zptl.Ptl698_45BuildReplyPacket(rData, reply)
+				err := conn.SendMsg(reply[0:plen])
 				if err != nil {
 					log698.Println(err)
 				}
@@ -625,14 +625,14 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			}
 
 			reply := make([]byte, 128)
-			len := zptl.PtlNwBuildReplyPacket(rData, reply)
-			err = conn.SendBuffMsg(reply[0:len])
+			plen := zptl.PtlNwBuildReplyPacket(rData, reply)
+			err = conn.SendBuffMsg(reply[0:plen])
 			if err != nil {
 				logNw.Println(err)
 			} else {
 				conn.SetProperty("ltime", time.Now())
 				conn.SetProperty("addr", tmnStr)
-				logNw.Printf("L: % X\n", reply[0:len])
+				logNw.Printf("L: % X\n", reply[0:plen])
 			}
 			return
 
@@ -648,12 +648,12 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 						logNw.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
 						reply := make([]byte, 128)
-						len := zptl.PtlNwBuildReplyPacket(rData, reply)
-						err := conn.SendBuffMsg(reply[0:len])
+						plen := zptl.PtlNwBuildReplyPacket(rData, reply)
+						err := conn.SendBuffMsg(reply[0:plen])
 						if err != nil {
 							logNw.Println(err)
 						} else {
-							logNw.Printf("H: % X", reply[0:len])
+							logNw.Printf("H: % X", reply[0:plen])
 						}
 					} else {
 						logNw.Println("终端登录地址与心跳地址不匹配!", preTmnStr, tmnStr)
@@ -669,8 +669,8 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			} else {
 				logNw.Println("终端退出", tmnStr)
 				reply := make([]byte, 128)
-				len := zptl.PtlNwBuildReplyPacket(rData, reply)
-				err := conn.SendMsg(reply[0:len])
+				plen := zptl.PtlNwBuildReplyPacket(rData, reply)
+				err := conn.SendMsg(reply[0:plen])
 				if err != nil {
 					logNw.Println(err)
 				}
@@ -817,7 +817,7 @@ func usrInput() {
 
 	for {
 		menu = 0
-		fmt.Scanln(&menu)
+		_, _ = fmt.Scanln(&menu)
 		fmt.Println("Hi you input is", menu)
 		switch menu {
 		case 1:

@@ -120,7 +120,7 @@ func (c *Conn) disConnectServer() {
 	if c.conn != nil {
 		c.logout()
 		c.cStatus = unConnect
-		c.conn.Close()
+		_ = c.conn.Close()
 		c.conn = nil
 		c.wg.Wait()
 		c.loginTime = time.Time{}
@@ -197,14 +197,14 @@ func (c *Conn) heartbeat() error {
 // @retval 0 : 其它报文
 // @retval 1 : 登录/心跳/退出确认帧
 func (c *Conn) packetType(ptype uint32, p []byte) uint8 {
-	if c.ptype&zptl.PTL_1376_1 != 0 {
+	if ptype&zptl.PTL_1376_1 != 0 {
 		return 0
-	} else if c.ptype&zptl.PTL_698_45 != 0 {
+	} else if ptype&zptl.PTL_698_45 != 0 {
 		if p[3] == 0x01 {
 			return 1
 		}
 		return 0
-	} else if c.ptype&zptl.PTL_NW != 0 {
+	} else if ptype&zptl.PTL_NW != 0 {
 		return 0
 	}
 	return 0
@@ -300,7 +300,7 @@ func (c *Conn) serve() {
 			if atomic.AddInt32(&c.heartUnAckCnt, 1) > 3 {
 				break //3次心跳错误
 			}
-			c.heartbeat()
+			_ = c.heartbeat()
 		}
 
 		//4. 断开连接

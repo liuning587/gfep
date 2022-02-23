@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func ptlNwIsVaild(buf []byte) int32 {
+func ptlNwIsValid(buf []byte) int32 {
 	if len(buf) < 1 {
 		return 0
 	}

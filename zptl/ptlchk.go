@@ -85,7 +85,7 @@ func (p *Chkfrm) Chkfrm(data []byte) int32 {
 		if offset > 0 {
 			p.buf = p.buf[offset:]
 		}
-		rlen, ptype := IsVaild(p.ptype, p.buf)
+		rlen, ptype := IsValid(p.ptype, p.buf)
 		if rlen > 0 {
 			if p.f != nil {
 				p.f(ptype, p.buf[:rlen], p.arg)
