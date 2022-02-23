@@ -11,7 +11,7 @@ func ptlNwIsVaild(buf []byte) int32 {
 	}
 
 	//第一字节必须为0x68
-	if 0x68 != buf[0] {
+	if buf[0] != 0x68 {
 		return -1
 	}
 
@@ -21,7 +21,7 @@ func ptlNwIsVaild(buf []byte) int32 {
 	}
 
 	//第六个字节必须为0x68
-	if 0x68 != buf[5] {
+	if buf[5] != 0x68 {
 		return -1
 	}
 
@@ -162,10 +162,7 @@ func PtlNwAddrStr(addr []byte) string {
 
 // PtlNwMsaCmp 主站MSA地址比较
 func PtlNwMsaCmp(msa int, buf []byte) bool {
-	if msa == int(buf[13]) {
-		return true
-	}
-	return false
+	return int(buf[13]) == msa
 }
 
 // PtlNwMsaGet 从报文中取出主站MSA地址
@@ -175,8 +172,12 @@ func PtlNwMsaGet(buf []byte) int {
 
 // PtlNwIsMsaValid 判断主站发出的msa是否有效
 func PtlNwIsMsaValid(msa int) bool {
-	if msa != 0 {
-		return true
-	}
-	return false
+	return msa != 0
+}
+
+// PtlNwBuildPacket 创建登录包
+// 登录:
+// 心跳:
+func PtlNwBuildPacket(tp uint8, tsa []byte) []byte {
+	return []byte{}
 }

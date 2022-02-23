@@ -13,10 +13,11 @@ type GlobalObj struct {
 	/*
 		Server
 	*/
-	TCPServer ziface.IServer //当前Zinx的全局Server对象
-	Host      string         //当前服务器主机IP
-	TCPPort   int            //当前服务器主机监听端口号
-	Name      string         //当前服务器名称
+	TCPServer     ziface.IServer //当前Zinx的全局Server对象
+	Host          string         //当前服务器主机IP
+	TCPPort       int            //当前服务器主机监听端口号
+	BridgeHost698 string         //698桥接主机IP
+	Name          string         //当前服务器名称
 
 	/*
 		Zinx
@@ -69,7 +70,7 @@ func PathExists(path string) (bool, error) {
 // Reload 读取用户的配置文件
 func (g *GlobalObj) Reload() {
 
-	if confFileExists, _ := PathExists(g.ConfFilePath); confFileExists != true {
+	if confFileExists, _ := PathExists(g.ConfFilePath); !confFileExists {
 		//fmt.Println("Config File ", g.ConfFilePath , " is not exist!!")
 		return
 	}
@@ -88,7 +89,7 @@ func (g *GlobalObj) Reload() {
 	if g.LogFile != "" {
 		zlog.SetLogFile(g.LogDir, g.LogFile)
 	}
-	if g.LogDebugClose == true {
+	if g.LogDebugClose {
 		zlog.CloseDebug()
 	}
 }
@@ -105,13 +106,14 @@ func init() {
 		Version:          "V0.2",
 		TCPPort:          20083,
 		Host:             "0.0.0.0",
+		BridgeHost698:    "", //0.0.0.0:0
 		MaxConn:          50000,
 		MaxPacketSize:    2200,
-		ConfFilePath:     pwd+"/conf/gfep.json",
+		ConfFilePath:     pwd + "/conf/gfep.json",
 		WorkerPoolSize:   0,
 		MaxWorkerTaskLen: 1024,
 		MaxMsgChanLen:    8,
-		LogDir:           pwd+"/log",
+		LogDir:           pwd + "/log",
 		LogFile:          "",
 		LogDebugClose:    false,
 

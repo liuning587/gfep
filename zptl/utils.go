@@ -118,7 +118,7 @@ func Hex2Str(data []byte) string {
 
 //Str2hex str to bytes
 func Str2hex(txt string) []byte {
-	var len int
+	var pos int
 	var str []byte
 
 	for _, v := range txt {
@@ -131,12 +131,12 @@ func Str2hex(txt string) []byte {
 		} else {
 			continue
 		}
-		if len&1 == 1 {
-			str[len>>1] = (str[len>>1] << 4) | uint8(v)
+		if pos&1 == 1 {
+			str[pos>>1] = (str[pos>>1] << 4) | uint8(v)
 		} else {
 			str = append(str, byte(v))
 		}
-		len++
+		pos++
 	}
 
 	return str

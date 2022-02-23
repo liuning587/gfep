@@ -9,7 +9,7 @@ func ptlNwmIsVaild(buf []byte) int32 {
 	}
 
 	//第一字节必须为0x88
-	if 0x88 != buf[0] {
+	if buf[0] != 0x88 {
 		return -1
 	}
 
@@ -19,7 +19,7 @@ func ptlNwmIsVaild(buf []byte) int32 {
 	}
 
 	//第二个字节必须为0x01
-	if 0x01 != buf[1] {
+	if buf[1] != 0x01 {
 		return -1
 	}
 

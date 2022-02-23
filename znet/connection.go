@@ -3,6 +3,7 @@ package znet
 import (
 	"errors"
 	"fmt"
+	"gfep/bridge"
 	"gfep/utils"
 	"gfep/ziface"
 	"gfep/zptl"
@@ -38,12 +39,13 @@ type Connection struct {
 	propertyLock sync.RWMutex
 
 	//链接属性: 先不用map节约资源
-	status int       //当前状态
-	addr   string    //终端/主站地址字符串
-	ctime  time.Time //连接时间
-	ltime  time.Time //登录时间
-	htime  time.Time //心跳时间
-	rtime  time.Time //最近一次报文接收时间
+	status int          //当前状态
+	addr   string       //终端/主站地址字符串
+	ctime  time.Time    //连接时间
+	ltime  time.Time    //登录时间
+	htime  time.Time    //心跳时间
+	rtime  time.Time    //最近一次报文接收时间
+	binfo  *bridge.Conn //桥接信息
 	// 级联终端信息
 }
 
@@ -62,6 +64,7 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		msgBuffChan:         make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 		msgBuffChanIsClosed: false,
 		// property:     make(map[string]interface{}),
+		binfo: nil,
 	}
 
 	//将新创建的Conn添加到链接管理中
@@ -79,7 +82,7 @@ func (c *Connection) StartWriter() {
 		case data := <-c.msgChan:
 			//有数据要写给客户端
 			if _, err := c.Conn.Write(data); err != nil {
-				c.Conn.Close()
+				_ = c.Conn.Close()
 				fmt.Println("Send Data error:, ", err, " Conn Writer exit")
 				return
 			}
@@ -89,14 +92,14 @@ func (c *Connection) StartWriter() {
 				//有数据要写给客户端
 				if _, err := c.Conn.Write(data); err != nil {
 					c.closeMsgBuffChan()
-					c.Conn.Close()
+					_ = c.Conn.Close()
 					fmt.Println("Send Buff Data error:, ", err, " Conn Writer exit")
 					return
 				}
 			} else {
 				fmt.Println("msgBuffChan is Closed")
-				break
 			}
+
 		case <-c.ExitBuffChan:
 			return
 		}
@@ -130,7 +133,7 @@ func (c *Connection) StartReader() {
 	// defer fmt.Println(c.RemoteAddr().String(), "[conn Reader exit!]")
 
 	ptlChk := zptl.NewChkfrm(zptl.PTL_698_45|zptl.PTL_NW|zptl.PTL_1376_1, 1000, cbRecvPacket, c)
-	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2, zptl.PmaxPtlFrameLen/2)
+	rbuf := make([]byte, zptl.PmaxPtlFrameLen/2)
 
 	for {
 		rlen, err := c.Conn.Read(rbuf)
@@ -147,18 +150,18 @@ func (c *Connection) StartReader() {
 
 // Start 启动连接，让当前连接开始工作
 func (c *Connection) Start() {
+	//按照用户传递进来的创建连接时需要处理的业务，执行钩子方法
+	c.TCPServer.CallOnConnStart(c)
 	//1 开启用户从客户端读取数据流程的Goroutine
 	go c.StartReader()
 	//2 开启用于写回客户端数据流程的Goroutine
 	go c.StartWriter()
-	//按照用户传递进来的创建连接时需要处理的业务，执行钩子方法
-	c.TCPServer.CallOnConnStart(c)
 }
 
 func (c *Connection) closeMsgBuffChan() {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
-	if c.msgBuffChanIsClosed != true {
+	if !c.msgBuffChanIsClosed {
 		c.msgBuffChanIsClosed = true
 		close(c.msgBuffChan)
 	}
@@ -168,7 +171,7 @@ func (c *Connection) closeMsgBuffChan() {
 func (c *Connection) Stop() {
 	// fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
 	//如果当前链接已经关闭
-	if c.isClosed == true {
+	if c.isClosed {
 		return
 	}
 	c.isClosed = true
@@ -177,7 +180,7 @@ func (c *Connection) Stop() {
 	c.TCPServer.CallOnConnStop(c)
 
 	// 关闭socket链接
-	c.Conn.Close()
+	_ = c.Conn.Close()
 	//关闭Writer
 	c.ExitBuffChan <- true
 
@@ -220,7 +223,7 @@ func (c *Connection) RemoteAddr() net.Addr {
 
 // SendMsg 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendMsg(data []byte) error {
-	if c.isClosed == true {
+	if c.isClosed {
 		return errors.New("Connection closed when send msg")
 	}
 
@@ -237,7 +240,7 @@ func (c *Connection) SendMsg(data []byte) error {
 
 // SendBuffMsg 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendBuffMsg(data []byte) error {
-	if c.isClosed == true {
+	if c.isClosed {
 		return errors.New("Connection closed when send buff msg")
 	}
 
@@ -293,6 +296,10 @@ func (c *Connection) SetProperty(key string, value interface{}) {
 		if v, ok := value.(time.Time); ok {
 			c.rtime = v
 		}
+	case "bridge":
+		if v, ok := value.(*bridge.Conn); ok {
+			c.binfo = v
+		}
 	}
 }
 
@@ -317,6 +324,11 @@ func (c *Connection) GetProperty(key string) (interface{}, error) {
 		return c.htime, nil
 	case "rtime":
 		return c.rtime, nil
+	case "bridge":
+		if c.binfo == nil {
+			return nil, errors.New("binfo is nil")
+		}
+		return c.binfo, nil
 	}
 	return nil, errors.New("no property found")
 }

@@ -84,8 +84,7 @@ func (s *Server) Start() {
 		fmt.Println("start Zinx server  ", s.Name, " succ, now listenning...")
 
 		//TODO server.go 应该有一个自动生成ID的方法
-		var cid uint32
-		cid = 0
+		cid := uint32(0)
 
 		//3 启动server网络连接业务
 		for {
@@ -99,15 +98,15 @@ func (s *Server) Start() {
 
 			//3.2 设置服务器最大连接控制,如果超过最大连接，那么则关闭此新的连接
 			if s.ConnMgr.Len() >= utils.GlobalObject.MaxConn {
-				conn.Close()
+				_ = conn.Close()
 				continue
 			}
 
-			conn.SetKeepAlive(true)
-			conn.SetKeepAlivePeriod(time.Minute * 2)
-			conn.SetNoDelay(true)
-			conn.SetReadBuffer(2200)
-			conn.SetWriteBuffer(2200)
+			_ = conn.SetKeepAlive(true)
+			_ = conn.SetKeepAlivePeriod(time.Minute * 2)
+			_ = conn.SetNoDelay(true)
+			_ = conn.SetReadBuffer(2200)
+			_ = conn.SetWriteBuffer(2200)
 
 			//3.3 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
 			dealConn := NewConntion(s, conn, cid, s.msgHandler)
@@ -176,7 +175,7 @@ func (s *Server) CallOnConnStop(conn ziface.IConnection) {
 func init() {
 	fmt.Println(zinxLogo)
 	fmt.Println(topLine)
-	fmt.Println(fmt.Sprintf("%s [Github] https://github.com/liuning587/gfep       %s", borderLine, borderLine))
+	fmt.Printf("%s [Github] https://github.com/liuning587/gfep       %s\n", borderLine, borderLine)
 	fmt.Println(bottomLine)
 	fmt.Printf("[gfep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
 		utils.GlobalObject.Version,

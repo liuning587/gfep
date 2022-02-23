@@ -11,7 +11,7 @@ func ptl1376_1IsVaild(buf []byte) int32 {
 	}
 
 	//第一字节必须为0x68
-	if 0x68 != buf[0] {
+	if buf[0] != 0x68 {
 		return -1
 	}
 
@@ -21,7 +21,7 @@ func ptl1376_1IsVaild(buf []byte) int32 {
 	}
 
 	//第六个字节必须为0x68
-	if 0x68 != buf[5] {
+	if buf[5] != 0x68 {
 		return -1
 	}
 
@@ -182,10 +182,7 @@ func Ptl1376_1AddrStr(addr []byte) string {
 
 // Ptl1376_1MsaCmp 主站MSA地址比较
 func Ptl1376_1MsaCmp(msa int, buf []byte) bool {
-	if msa == int(buf[11]) {
-		return true
-	}
-	return false
+	return msa == int(buf[11])
 }
 
 // Ptl1376_1MsaGet 从报文中取出主站MSA地址
@@ -195,8 +192,12 @@ func Ptl1376_1MsaGet(buf []byte) int {
 
 // Ptl1376_1IsMsaValid 判断主站发出的msa是否有效
 func Ptl1376_1IsMsaValid(msa int) bool {
-	if msa != 0 {
-		return true
-	}
-	return false
+	return msa != 0
+}
+
+// Ptl1376_1BuildPacket 创建登录包
+// 登录: 68 32 00 32 00 68 C9 21 45 03 00 00 02 74 00 00 01 00 A9 16
+// 心跳: 68 4A 00 4A 00 68 C9 34 08 94 04 00 02 75 00 00 04 00 33 30 14 12 D2 20 93 16
+func Ptl1376_1BuildPacket(tp uint8, tsa []byte) []byte {
+	return []byte{}
 }

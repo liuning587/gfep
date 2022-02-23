@@ -54,21 +54,21 @@ var levels = []string{
 
 type ZinxLogger struct {
 	//确保多协程读写文件，防止文件内容混乱，做到协程安全
-	mu     sync.Mutex
+	mu sync.Mutex
 	//每行log日志的前缀字符串,拥有日志标记
 	prefix string
 	//日志标记位
-	flag   int
+	flag int
 	//日志输出的文件描述符
-	out    io.Writer
+	out io.Writer
 	//输出的缓冲区
-	buf    bytes.Buffer
+	buf bytes.Buffer
 	//当前日志绑定的输出文件
-	file   *os.File
+	file *os.File
 	//是否打印调试debug信息
 	debugClose bool
 	//获取日志文件名和代码上述的runtime.Call 的函数调用层数
-	calldDepth	int
+	calldDepth int
 }
 
 /*
@@ -80,7 +80,7 @@ type ZinxLogger struct {
 func NewZinxLog(out io.Writer, prefix string, flag int) *ZinxLogger {
 
 	//默认 debug打开， calledDepth深度为2,ZinxLogger对象调用日志打印方法最多调用两层到达output函数
-	zlog := &ZinxLogger{out: out, prefix: prefix, flag: flag, file:nil, debugClose:false, calldDepth:2}
+	zlog := &ZinxLogger{out: out, prefix: prefix, flag: flag, file: nil, debugClose: false, calldDepth: 2}
 	//设置log对象 回收资源 析构方法(不设置也可以，go的Gc会自动回收，强迫症没办法)
 	runtime.SetFinalizer(zlog, CleanZinxLog)
 	return zlog
@@ -394,4 +394,3 @@ func itoa(buf *bytes.Buffer, i int, wid int) {
 		bp++
 	}
 }
-

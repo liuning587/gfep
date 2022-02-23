@@ -100,7 +100,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
-			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
+			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "FF")) {
 				// zlog.Debug("后台", msaStr, "转发", tmnStr)
 				go conn.SendMsgByConnID(a.connID, rData)
 			}

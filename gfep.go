@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"gfep/bridge"
 	"gfep/timewriter"
 	"gfep/utils"
 	"gfep/ziface"
@@ -115,7 +116,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
-			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
+			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "FF")) {
 				go conn.SendMsgByConnID(a.connID, rData)
 			}
 		}
@@ -138,7 +139,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 			if err != nil || preTmnStr != tmnStr {
 				isNewTmn := true
 				tmn376Lock.Lock()
-				if utils.GlobalObject.SupportCommTermianl != true {
+				if !utils.GlobalObject.SupportCommTermianl {
 					var next *list.Element
 					for e := tmn376List.Front(); e != nil; e = next {
 						next = e.Next()
@@ -163,7 +164,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 							isNewTmn = false
 							break
 						}
-						if utils.GlobalObject.SupportCasLink != true {
+						if !utils.GlobalObject.SupportCasLink {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
 								log376.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
@@ -183,7 +184,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 				log376.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
 
-			reply := make([]byte, 128, 128)
+			reply := make([]byte, 128)
 			len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
@@ -206,7 +207,7 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 						//todo: 级联心跳时, 需判断级联地址是否存在
 						log376.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
-						reply := make([]byte, 128, 128)
+						reply := make([]byte, 128)
 						len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
@@ -221,14 +222,13 @@ func (r *Ptl1376_1Router) Handle(request ziface.IRequest) {
 				}
 				return
 			}
-			break
 
 		case zptl.LINK_EXIT:
 			if connStatus != connT376 {
 				log376.Println("终端未登录就想退出", tmnStr)
 			} else {
 				log376.Println("终端退出", tmnStr)
-				reply := make([]byte, 128, 128)
+				reply := make([]byte, 128)
 				len := zptl.Ptl1376_1BuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
@@ -340,7 +340,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			if err != nil || preTmnStr != tmnStr {
 				isNewTmn := true
 				tmn698Lock.Lock()
-				if utils.GlobalObject.SupportCommTermianl != true {
+				if !utils.GlobalObject.SupportCommTermianl {
 					var next *list.Element
 					for e := tmn698List.Front(); e != nil; e = next {
 						next = e.Next()
@@ -354,6 +354,12 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 							log698.Println("终端重复登录", tmnStr, "删除", a.connID)
 							//todo: 清除级联
 							tmn698List.Remove(e)
+							b, err := conn.GetProperty("bridge")
+							if err == nil {
+								if v, ok := b.(*bridge.Conn); ok {
+									v.Stop()
+								}
+							}
 						}
 					}
 				} else {
@@ -365,16 +371,36 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 							isNewTmn = false
 							break
 						}
-						if utils.GlobalObject.SupportCasLink != true {
+						if !utils.GlobalObject.SupportCasLink {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
 								log698.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
 								tmn698List.Remove(e)
+								b, err := conn.GetProperty("bridge")
+								if err == nil {
+									if v, ok := b.(*bridge.Conn); ok {
+										v.Stop()
+									}
+								}
 							}
 						}
 					}
 				}
 				if isNewTmn {
+					if len(utils.GlobalObject.BridgeHost698) > 0 && utils.GlobalObject.BridgeHost698[0] != '0' {
+						tsa := zptl.Ptl698_45AddrGet(rData)
+						b := bridge.NewConn(utils.GlobalObject.BridgeHost698, tsa[1:], zptl.PTL_698_45, time.Minute, func(b []byte) {
+							err = conn.SendBuffMsg(b)
+							if err != nil {
+								log698.Println(err)
+							} else {
+								log698.Printf("B: % X\n", b)
+							}
+						})
+						b.Start()
+						conn.SetProperty("bridge", b)
+						log698.Printf("B: % X create!\n", tsa)
+					}
 					tmn698List.PushBack(addrConnID{tmnStr, conn.GetConnID()})
 					log698.Println("终端登录", tmnStr, "connID", conn.GetConnID())
 				} else {
@@ -385,7 +411,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 				log698.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
 
-			reply := make([]byte, 128, 128)
+			reply := make([]byte, 128)
 			len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
@@ -408,7 +434,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 						//todo: 级联心跳时, 需判断级联地址是否存在
 						log698.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
-						reply := make([]byte, 128, 128)
+						reply := make([]byte, 128)
 						len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
@@ -423,14 +449,13 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 				}
 				return
 			}
-			break
 
 		case zptl.LINK_EXIT:
 			if connStatus != connT698 {
 				log698.Println("终端未登录就想退出", tmnStr)
 			} else {
 				log698.Println("终端退出", tmnStr)
-				reply := make([]byte, 128, 128)
+				reply := make([]byte, 128)
 				len := zptl.Ptl698_45BuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
@@ -444,6 +469,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			break
 		}
 		//寻找对应APP进行转发
+		isMatch := false
 		app698Lock.RLock()
 		for e := app698List.Front(); e != nil; e = e.Next() {
 			a, ok := (e.Value).(addrConnID)
@@ -451,9 +477,20 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 			//2. 后台msa为匹配要转发
 			if ok && (msaStr == "0" || a.addrStr == msaStr) {
 				go conn.SendMsgByConnID(a.connID, rData)
+				isMatch = true
 			}
 		}
 		app698Lock.RUnlock()
+
+		//发送给桥接主站
+		if msaStr == "0" || !isMatch {
+			b, err := conn.GetProperty("bridge")
+			if err == nil {
+				if v, ok := b.(*bridge.Conn); ok {
+					v.Send(rData)
+				}
+			}
+		}
 	}
 }
 
@@ -518,7 +555,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			a, ok := (e.Value).(addrConnID)
 			//1. 终端地址匹配要转发
 			//2. 广播/通配地址需要转发
-			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "AA")) {
+			if ok && (a.addrStr == tmnStr || strings.HasSuffix(tmnStr, "FF")) {
 				// logNw.Println("后台", msaStr, "转发", tmnStr)
 				go conn.SendMsgByConnID(a.connID, rData)
 			}
@@ -542,7 +579,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 			if err != nil || preTmnStr != tmnStr {
 				isNewTmn := true
 				tmnNwLock.Lock()
-				if utils.GlobalObject.SupportCommTermianl != true {
+				if !utils.GlobalObject.SupportCommTermianl {
 					var next *list.Element
 					for e := tmnNwList.Front(); e != nil; e = next {
 						next = e.Next()
@@ -567,7 +604,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 							isNewTmn = false
 							break
 						}
-						if utils.GlobalObject.SupportCasLink != true {
+						if !utils.GlobalObject.SupportCasLink {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
 								logNw.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
@@ -587,7 +624,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 				logNw.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
 			}
 
-			reply := make([]byte, 128, 128)
+			reply := make([]byte, 128)
 			len := zptl.PtlNwBuildReplyPacket(rData, reply)
 			err = conn.SendBuffMsg(reply[0:len])
 			if err != nil {
@@ -610,7 +647,7 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 						//todo: 级联心跳时, 需判断级联地址是否存在
 						logNw.Println("终端心跳", tmnStr)
 						conn.SetProperty("htime", time.Now()) //更新心跳时间
-						reply := make([]byte, 128, 128)
+						reply := make([]byte, 128)
 						len := zptl.PtlNwBuildReplyPacket(rData, reply)
 						err := conn.SendBuffMsg(reply[0:len])
 						if err != nil {
@@ -625,14 +662,13 @@ func (r *PTLNWRouter) Handle(request ziface.IRequest) {
 				}
 				return
 			}
-			break
 
 		case zptl.LINK_EXIT:
 			if connStatus != connTNW {
 				logNw.Println("终端未登录就想退出", tmnStr)
 			} else {
 				logNw.Println("终端退出", tmnStr)
-				reply := make([]byte, 128, 128)
+				reply := make([]byte, 128)
 				len := zptl.PtlNwBuildReplyPacket(rData, reply)
 				err := conn.SendMsg(reply[0:len])
 				if err != nil {
@@ -681,13 +717,12 @@ func DoConnectionLost(conn ziface.IConnection) {
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.connID == conn.GetConnID() {
 				tmn376List.Remove(e)
-				if utils.GlobalObject.SupportCas != true {
+				if !utils.GlobalObject.SupportCas {
 					break
 				}
 			}
 		}
 		tmn376Lock.Unlock()
-		break
 
 	case connA376:
 		app376Lock.Lock()
@@ -700,7 +735,6 @@ func DoConnectionLost(conn ziface.IConnection) {
 			}
 		}
 		app376Lock.Unlock()
-		break
 
 	case connT698:
 		tmn698Lock.Lock()
@@ -710,13 +744,18 @@ func DoConnectionLost(conn ziface.IConnection) {
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.connID == conn.GetConnID() {
 				tmn698List.Remove(e)
-				if utils.GlobalObject.SupportCas != true {
+				b, err := conn.GetProperty("bridge")
+				if err == nil {
+					if v, ok := b.(*bridge.Conn); ok {
+						v.Stop()
+					}
+				}
+				if !utils.GlobalObject.SupportCas {
 					break
 				}
 			}
 		}
 		tmn698Lock.Unlock()
-		break
 
 	case connA698:
 		app698Lock.Lock()
@@ -729,7 +768,6 @@ func DoConnectionLost(conn ziface.IConnection) {
 			}
 		}
 		app698Lock.Unlock()
-		break
 
 	case connTNW:
 		tmnNwLock.Lock()
@@ -739,13 +777,12 @@ func DoConnectionLost(conn ziface.IConnection) {
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.connID == conn.GetConnID() {
 				tmnNwList.Remove(e)
-				if utils.GlobalObject.SupportCas != true {
+				if !utils.GlobalObject.SupportCas {
 					break
 				}
 			}
 		}
 		tmnNwLock.Unlock()
-		break
 
 	case connANW:
 		appNwLock.Lock()
@@ -758,7 +795,6 @@ func DoConnectionLost(conn ziface.IConnection) {
 			}
 		}
 		appNwLock.Unlock()
-		break
 
 	default:
 		break
@@ -869,7 +905,7 @@ func usrInput() {
 		case 8:
 			os.Exit(0)
 		}
-		fmt.Printf(helper)
+		fmt.Printf("%s", helper)
 	}
 }
 

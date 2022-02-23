@@ -15,7 +15,7 @@ func ptl698_45HeadIsVaild(buf []byte) int32 {
 		return 0
 	}
 
-	if 0x68 != buf[0] {
+	if buf[0] != 0x68 {
 		return -1
 	}
 
@@ -59,7 +59,7 @@ func ptl698_45IsVaild(buf []byte) int32 {
 		return 0
 	}
 
-	if 0x68 != buf[0] {
+	if buf[0] != 0x68 {
 		return -1
 	}
 
@@ -104,7 +104,7 @@ func ptl698_45IsVaild(buf []byte) int32 {
 	if len(buf) < int(fLen+2) {
 		return 0
 	}
-	if 0x16 != buf[fLen+1] {
+	if buf[fLen+1] != 0x16 {
 		return -1
 	}
 
@@ -238,10 +238,7 @@ func Ptl698_45AddrStr(addr []byte) string {
 
 // Ptl698_45MsaCmp 主站MSA地址比较
 func Ptl698_45MsaCmp(msa int, buf []byte) bool {
-	if msa == int(buf[6+buf[4]&0x0f]) {
-		return true
-	}
-	return false
+	return msa == int(buf[6+buf[4]&0x0f])
 }
 
 // Ptl698_45MsaGet 从报文中取出主站MSA地址
@@ -251,8 +248,30 @@ func Ptl698_45MsaGet(buf []byte) int {
 
 // Ptl698_45IsMsaValid 判断主站发出的msa是否有效
 func Ptl698_45IsMsaValid(msa int) bool {
-	if msa != 0 {
-		return true
-	}
-	return false
+	return msa != 0
+}
+
+// Ptl698_45BuildLoginPacket 创建登录包
+// tp: 0-登录  1-心跳 2-退出
+// 登录: 68 1E 00 81 05 01 00 00 00 00 00 00 D2 B6 01 00 00 01 2C 07 E6 02 17 03 08 06 38 03 22 1C BC 16
+// 确认: 68 30 00 01 05 01 00 00 00 00 00 00 52 D9 81 00 00 07 E6 02 17 03 08 05 02 02 F9 07 E6 02 17 03 08 06 09 00 32 07 E6 02 17 03 08 06 09 00 32 F0 E7 16
+// 心跳: 68 1E 00 81 05 01 00 00 00 00 00 00 D2 B6 01 00 01 01 2C 07 E6 02 17 03 00 04 33 00 68 77 34 16
+func Ptl698_45BuildPacket(tp uint8, tsa []byte) []byte {
+	packet := []byte{0x68, 0x1E, 0x00, 0x81, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD2, 0xB6,
+		0x01, 0x00, tp, 0x01, 0x2C, 0x07, 0xE6, 0x02, 0x17, 0x03, 0x08, 0x06, 0x38, 0x03, 0x22, 0x1C, 0xBC, 0x16}
+
+	copy(packet[5:], tsa[:])
+	//todo: 心跳周期
+	getDataTime(packet[19:])
+
+	offsetHcs := int(4 + packet[4]&0xf + 3) //起始1、长度2、控制域1、地址
+	crc := Crc16Calculate(packet[1:offsetHcs])
+	packet[offsetHcs+0] = byte((crc >> 0) & 0xff)
+	packet[offsetHcs+1] = byte((crc >> 8) & 0xff)
+
+	offset := len(packet) - 3
+	crc = Crc16Calculate(packet[1:offset])
+	packet[offset+0] = byte((crc >> 0) & 0xff)
+	packet[offset+1] = byte((crc >> 8) & 0xff)
+	return packet
 }
