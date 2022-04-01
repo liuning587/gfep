@@ -359,6 +359,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 								if v, ok := b.(*bridge.Conn); ok {
 									v.Stop()
 								}
+								conn.RemoveProperty("bridge")
 							}
 						}
 					}
@@ -381,6 +382,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 									if v, ok := b.(*bridge.Conn); ok {
 										v.Stop()
 									}
+									conn.RemoveProperty("bridge")
 								}
 							}
 						}
@@ -749,6 +751,7 @@ func DoConnectionLost(conn ziface.IConnection) {
 					if v, ok := b.(*bridge.Conn); ok {
 						v.Stop()
 					}
+					conn.RemoveProperty("bridge")
 				}
 				if !utils.GlobalObject.SupportCas {
 					break

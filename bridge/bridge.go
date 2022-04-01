@@ -33,6 +33,7 @@ const (
 	unConnect               //未连接
 	tcpConnectOK            //已连接
 	loginOK                 //已登录
+	exitRequest             //请求退出
 )
 
 //SendMsgHandler 消息回调
@@ -53,18 +54,20 @@ type Conn struct {
 	wg            sync.WaitGroup // wg
 	loginAckSig   chan struct{}  // 登录确认信号
 	lock          sync.Mutex     // 登录确认信号锁
+	isExitRequest bool           //是否退出
 	// chan
 }
 
 // NewConn 新建桥接连接
 func NewConn(host string, addr []byte, ptype uint32, heart time.Duration, sendMsg SendMsgHandler) *Conn {
 	return &Conn{
-		host:       host,
-		addr:       addr,
-		ptype:      ptype,
-		heartCycle: heart,
-		sendMsg:    sendMsg,
-		cStatus:    unConnect,
+		host:          host,
+		addr:          addr,
+		ptype:         ptype,
+		heartCycle:    heart,
+		sendMsg:       sendMsg,
+		cStatus:       unConnect,
+		isExitRequest: false,
 	}
 }
 
@@ -75,6 +78,8 @@ func (c *Conn) Start() {
 
 // Stop 终止桥接
 func (c *Conn) Stop() {
+	c.isExitRequest = true
+	c.cStatus = exitRequest
 	c.disConnectServer()
 }
 
@@ -282,7 +287,7 @@ func (c *Conn) serve() {
 			<-time.After(time.Second * 10)
 			continue
 		}
-		logBridge.Printf("login ok")
+		logBridge.Printf("[% X]login ok", c.addr)
 
 		// 3. hearbeat
 		atomic.StoreInt32(&c.heartUnAckCnt, 0)
@@ -305,6 +310,10 @@ func (c *Conn) serve() {
 
 		//4. 断开连接
 		c.disConnectServer()
-		logBridge.Printf("logout")
+		if c.isExitRequest {
+			logBridge.Printf("[% X]exit", c.addr)
+			return
+		}
+		logBridge.Printf("[% X]logout", c.addr)
 	}
 }

@@ -338,6 +338,10 @@ func (c *Connection) RemoveProperty(key string) {
 	c.propertyLock.Lock()
 	defer c.propertyLock.Unlock()
 
+	switch key {
+	case "bridge":
+		c.binfo = nil
+	}
 	// delete(c.property, key)
 	c.status = 0
 }
