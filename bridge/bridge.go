@@ -51,7 +51,6 @@ type Conn struct {
 	heartTime     time.Time      // 心跳时间
 	heartUnAckCnt int32          // 未确认心跳数量
 	conn          net.Conn       // socket
-	wg            sync.WaitGroup // wg
 	loginAckSig   chan struct{}  // 登录确认信号
 	lock          sync.Mutex     // 登录确认信号锁
 	isExitRequest bool           //是否退出
@@ -115,7 +114,6 @@ func (c *Conn) connectServer() error {
 	c.cStatus = tcpConnectOK
 	logBridge.Println("connect " + c.host + " OK")
 
-	c.wg.Add(1)
 	go c.recv()
 
 	return nil
@@ -127,7 +125,6 @@ func (c *Conn) disConnectServer() {
 		c.cStatus = unConnect
 		_ = c.conn.Close()
 		c.conn = nil
-		c.wg.Wait()
 		c.loginTime = time.Time{}
 		c.heartTime = time.Time{}
 	}
@@ -260,7 +257,6 @@ func (c *Conn) recv() {
 		// logBridge.Printf("BRAW: % X\n", rbuf[0:rlen])
 		ptlChk.Chkfrm(rbuf[0:rlen])
 	}
-	c.wg.Done()
 }
 
 func (c *Conn) serve() {
