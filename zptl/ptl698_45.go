@@ -161,7 +161,7 @@ func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 	out[2] = 0x00
 	out[3] = 0x01
 	//服务器地址、客户机地址
-	for i := 0; i < int(in[4]+3); i++ {
+	for i := 0; i < int(in[4]&0xf+3); i++ {
 		out[4+i] = in[4+i]
 	}
 	offset := int(4 + in[4]&0xf + 3) //起始1、长度2、控制域1、地址
