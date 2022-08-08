@@ -353,7 +353,6 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 						if ok && a.addrStr == tmnStr && a.connID != conn.GetConnID() {
 							log698.Println("终端重复登录", tmnStr, "删除", a.connID)
 							//todo: 清除级联
-							tmn698List.Remove(e)
 							b, err := conn.GetProperty("bridge")
 							if err == nil {
 								if v, ok := b.(*bridge.Conn); ok {
@@ -361,6 +360,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 								}
 								conn.RemoveProperty("bridge")
 							}
+							tmn698List.Remove(e)
 						}
 					}
 				} else {
@@ -376,7 +376,6 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 							if ok && a.connID == conn.GetConnID() && a.addrStr != tmnStr {
 								//todo: 有可能是联终端登录
 								log698.Println("终端登录地址发生变更", tmnStr, "删除", a.connID)
-								tmn698List.Remove(e)
 								b, err := conn.GetProperty("bridge")
 								if err == nil {
 									if v, ok := b.(*bridge.Conn); ok {
@@ -384,6 +383,7 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 									}
 									conn.RemoveProperty("bridge")
 								}
+								tmn698List.Remove(e)
 							}
 						}
 					}
@@ -745,7 +745,6 @@ func DoConnectionLost(conn ziface.IConnection) {
 			next = e.Next()
 			a, ok := (e.Value).(addrConnID)
 			if ok && a.connID == conn.GetConnID() {
-				tmn698List.Remove(e)
 				b, err := conn.GetProperty("bridge")
 				if err == nil {
 					if v, ok := b.(*bridge.Conn); ok {
@@ -753,6 +752,7 @@ func DoConnectionLost(conn ziface.IConnection) {
 					}
 					conn.RemoveProperty("bridge")
 				}
+				tmn698List.Remove(e)
 				if !utils.GlobalObject.SupportCas {
 					break
 				}

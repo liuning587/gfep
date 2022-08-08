@@ -291,11 +291,11 @@ func (c *Conn) serve() {
 			sec := c.heartCycle / time.Second
 			for ; sec > 0; sec -= 10 {
 				<-time.After(time.Second * 10)
-				if c.cStatus != loginOK {
+				if c.cStatus != loginOK || c.isExitRequest {
 					break //掉线后立即重连
 				}
 			}
-			if c.cStatus != loginOK {
+			if c.cStatus != loginOK || c.isExitRequest {
 				break
 			}
 			if atomic.AddInt32(&c.heartUnAckCnt, 1) > 3 {
