@@ -123,8 +123,10 @@ func (c *Conn) disConnectServer() {
 	if c.conn != nil {
 		c.logout()
 		c.cStatus = unConnect
-		_ = c.conn.Close()
-		c.conn = nil
+		if c.conn != nil {
+			_ = c.conn.Close()
+			c.conn = nil
+		}
 		c.loginTime = time.Time{}
 		c.heartTime = time.Time{}
 	}
