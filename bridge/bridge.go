@@ -36,11 +36,12 @@ const (
 	exitRequest             //请求退出
 )
 
-//SendMsgHandler 消息回调
+// SendMsgHandler 消息回调
 type SendMsgHandler func([]byte)
 
 // Conn 桥接信息
 type Conn struct {
+	sync.Mutex
 	host          string         // 桥接主站IP:Port
 	addr          []byte         // 终端地址
 	ptype         uint32         // 协议类型
@@ -120,6 +121,7 @@ func (c *Conn) connectServer() error {
 }
 
 func (c *Conn) disConnectServer() {
+	c.Lock()
 	if c.conn != nil {
 		c.logout()
 		c.cStatus = unConnect
@@ -130,6 +132,7 @@ func (c *Conn) disConnectServer() {
 		c.loginTime = time.Time{}
 		c.heartTime = time.Time{}
 	}
+	c.Unlock()
 }
 
 func (c *Conn) login() error {
