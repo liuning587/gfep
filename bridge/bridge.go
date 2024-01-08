@@ -7,6 +7,7 @@ import (
 	"gfep/zptl"
 	"log"
 	"net"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -249,6 +250,12 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 }
 
 func (c *Conn) recv() {
+	defer func() {
+		if p := recover(); p != nil {
+			logBridge.Panicf("recv() painc recover! p: %v\n", p)
+			debug.PrintStack()
+		}
+	}()
 	ptlChk := zptl.NewChkfrm(c.ptype, 1000, cbRecvPacket, c)
 	rbuf := make([]byte, 2048)
 
