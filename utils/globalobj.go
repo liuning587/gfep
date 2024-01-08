@@ -50,6 +50,7 @@ type GlobalObj struct {
 	SupportCasLink      bool //是否级联终端登陆、心跳(南网使用)
 	SupportCommTermianl bool //是否支持终端重复登陆(Y/N)
 	SupportReplyHeart   bool //是否支持前置机维护心跳(Y/N)
+	SupportReplyReport  bool //是否支持前置机确认上报(Y/N)
 }
 
 // GlobalObject 定义一个全局的对象
@@ -123,6 +124,7 @@ func init() {
 		SupportCasLink:      false,
 		SupportCommTermianl: true,
 		SupportReplyHeart:   true,
+		SupportReplyReport:  false,
 	}
 
 	//从配置文件中加载一些用户配置的参数

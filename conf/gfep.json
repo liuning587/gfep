@@ -13,5 +13,6 @@
   "SupportCas":          false,
   "SupportCasLink":      false,
   "SupportCommTermianl": true,
-  "SupportReplyHeart":   true
+  "SupportReplyHeart":   true,
+  "SupportReplyReport":   true
 }

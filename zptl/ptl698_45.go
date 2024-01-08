@@ -278,3 +278,81 @@ func Ptl698_45BuildPacket(tp uint8, tsa []byte) []byte {
 	packet[offset+1] = byte((crc >> 8) & 0xff)
 	return packet
 }
+
+// Ptl698_45IsReport 是否为上报报文
+// 68 3A 00 83 05 11 11 00 00 11 11 00 A5 31 88 02 1F 01 60 12 03 00 05 00 20 2A 02 00 00 60 40 02 00 00 60 41 02 00 00 60 42 02 00 01 50 01 02 00 01 20 04 02 01 01 00 00 00 52 F6 16
+func Ptl698_45IsReport(buf []byte) bool {
+	pos := 4 + buf[4]&0x0f + 2 + 3
+	if len(buf) < 18 {
+		return false
+	}
+
+	// if buf[pos] == 0x88 && buf[pos+1] == 0x01 {
+	// 	return true
+	// }
+	if buf[pos] == 0x88 && buf[pos+1] == 0x02 {
+		return true
+	}
+	// if buf[pos] == 0x88 && buf[pos+1] == 0x03 {
+	// 	return true
+	// }
+	return false
+}
+
+// Ptl698_45BuildReportAckPacket 打包上报回复包
+func Ptl698_45BuildReportAckPacket(in []byte, out []byte) int {
+	out[0] = 0x68
+	out[1] = 0x00
+	out[2] = 0x00
+	out[3] = 0x03
+	//服务器地址、客户机地址
+	for i := 0; i < int(in[4]&0xf+3); i++ {
+		out[4+i] = in[4+i]
+	} //todo: 注意SA
+	offset := int(4 + in[4]&0xf + 3) //起始1、长度2、控制域1、地址
+	offset += 2
+
+	out[offset+0] = 0x08
+	out[offset+1] = in[offset+1]
+	out[offset+2] = in[offset+2]
+	rtype := out[offset+1]
+	offset += 3
+
+	switch rtype {
+	case 1: //OAD
+		return 0 //unsupport
+	case 2: //Record
+		out[offset+0] = 0x01
+		out[offset+1] = in[offset+1]
+		out[offset+2] = in[offset+2]
+		out[offset+3] = in[offset+3]
+		out[offset+4] = in[offset+4]
+		offset += 5
+	case 3: //
+		return 0 //unsupport
+	default:
+		return 0 //unsupport
+	}
+
+	out[offset+0] = 0x00 //时间标签
+	offset += 1
+
+	//长度区域
+	out[1] = byte(((offset + 3 - 2) >> 0) & 0xff)
+	out[2] = byte(((offset + 3 - 2) >> 8) & 0xff)
+
+	offsetHcs := int(4 + in[4]&0xf + 3) //起始1、长度2、控制域1、地址
+	crc := Crc16Calculate(out[1:offsetHcs])
+	out[offsetHcs+0] = byte((crc >> 0) & 0xff)
+	out[offsetHcs+1] = byte((crc >> 8) & 0xff)
+
+	crc = Crc16Calculate(out[1:offset])
+	out[offset+0] = byte((crc >> 0) & 0xff)
+	out[offset+1] = byte((crc >> 8) & 0xff)
+
+	out[offset+2] = 0x16
+
+	offset += 3
+
+	return offset
+}

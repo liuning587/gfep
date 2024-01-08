@@ -470,6 +470,18 @@ func (r *PTL698_45Router) Handle(request ziface.IRequest) {
 		default:
 			break
 		}
+
+		if utils.GlobalObject.SupportReplyReport && zptl.Ptl698_45IsReport(rData) {
+			reply := make([]byte, 512)
+			plen := zptl.Ptl698_45BuildReportAckPacket(rData, reply)
+			err := conn.SendBuffMsg(reply[0:plen])
+			if err != nil {
+				log698.Println(err)
+			} else {
+				log698.Printf("K: % X", reply[0:plen])
+			}
+		}
+
 		//寻找对应APP进行转发
 		isMatch := false
 		app698Lock.RLock()
