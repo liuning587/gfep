@@ -169,7 +169,7 @@ func Ptl698_45BuildReplyPacket(in []byte, out []byte) int {
 
 	out[offset+0] = 0x81
 	out[offset+1] = 0x00
-	out[offset+2] = 0x00
+	out[offset+2] = 0x80 //时钟可信
 	offset += 3
 
 	//请求时间
