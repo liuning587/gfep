@@ -160,11 +160,12 @@ func (c *Connection) Start() {
 
 func (c *Connection) closeMsgBuffChan() {
 	c.propertyLock.Lock()
-	defer c.propertyLock.Unlock()
 	if !c.msgBuffChanIsClosed {
 		c.msgBuffChanIsClosed = true
 		close(c.msgBuffChan)
+		c.msgBuffChan = nil
 	}
+	c.propertyLock.Unlock()
 }
 
 // Stop 停止连接，结束当前连接状态
@@ -240,7 +241,7 @@ func (c *Connection) SendMsg(data []byte) error {
 
 // SendBuffMsg 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendBuffMsg(data []byte) error {
-	if c.isClosed {
+	if c.msgBuffChanIsClosed {
 		return errors.New("Connection closed when send buff msg")
 	}
 
@@ -250,7 +251,9 @@ func (c *Connection) SendBuffMsg(data []byte) error {
 	}()
 
 	//写回客户端, 高并发下有可能msgBuffChan被关闭
-	c.msgBuffChan <- data
+	if c.msgBuffChan != nil {
+		c.msgBuffChan <- data
+	}
 
 	return nil
 }
