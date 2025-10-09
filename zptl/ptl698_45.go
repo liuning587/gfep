@@ -223,6 +223,9 @@ func Ptl698_45AddrCmp(addr []byte, buf []byte) bool {
 
 // Ptl698_45AddrGet 从报文中取出终端地址
 func Ptl698_45AddrGet(buf []byte) []byte {
+	if buf[4]&0xF0 == 0x20 {
+		return append([]byte{buf[4]&0x0f - 1}, buf[6:5+(buf[4]&0x0f)+1]...)
+	}
 	return append([]byte{buf[4] & 0x0f}, buf[5:5+(buf[4]&0x0f)+1]...)
 }
 
