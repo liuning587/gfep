@@ -4,6 +4,7 @@ import (
 	"errors"
 	"gfep/bridge"
 	"gfep/internal/logx"
+	"gfep/internal/netaddr"
 	"gfep/utils"
 	"gfep/ziface"
 	"gfep/zptl"
@@ -77,14 +78,21 @@ type Connection struct {
 	propertyLock sync.RWMutex
 
 	//链接属性: 先不用map节约资源
-	status int          //当前状态
-	addr   string       //终端/主站地址字符串
-	ctime  time.Time    //连接时间
-	ltime  time.Time    //登录时间
-	htime  time.Time    //心跳时间
-	rtime  time.Time    //最近一次报文接收时间
-	binfo  *bridge.Conn //桥接信息
-	// 级联终端信息
+	status       int          //当前状态
+	addr         string       //终端/主站地址字符串
+	ctime        time.Time    //连接时间
+	ltime        time.Time    //登录时间
+	htime        time.Time    //心跳时间
+	rtime        time.Time    //最近一次业务层收到完整帧的时间（touchRx）
+	lastTxAt     time.Time    //最近一次向对端 Write 成功的时间
+	lastReportAt time.Time    //最近一次 698 上报（IsReport 且主站 MSA=0）
+	binfo        *bridge.Conn //桥接信息
+
+	// 统计：按「完整规约帧」计数收；按成功 TCP Write 计数发（与业务 Send 次数一致）。
+	rxFrames     atomic.Uint64
+	rxFrameBytes atomic.Uint64
+	txWrites     atomic.Uint64
+	txWriteBytes atomic.Uint64
 }
 
 // NewConntion 创建连接的方法
@@ -116,16 +124,17 @@ func (c *Connection) StartWriter() {
 	for {
 		select {
 		case item := <-c.msgChan:
-			_, err := c.Conn.Write(item.n)
+			n, err := c.Conn.Write(item.n)
 			releaseBuffPayload(item)
 			if err != nil {
 				_ = c.Conn.Close()
 				logx.Errorf("Send Data error: %v Conn Writer exit", err)
 				return
 			}
+			c.recordTx(n)
 		case item, ok := <-c.msgBuffChan:
 			if ok {
-				_, err := c.Conn.Write(item.n)
+				n, err := c.Conn.Write(item.n)
 				releaseBuffPayload(item)
 				if err != nil {
 					c.closeMsgBuffChan()
@@ -133,6 +142,7 @@ func (c *Connection) StartWriter() {
 					logx.Errorf("Send Buff Data error: %v Conn Writer exit", err)
 					return
 				}
+				c.recordTx(n)
 			} else if utils.GlobalObject.LogNetVerbose {
 				logx.Println("msgBuffChan is Closed")
 			}
@@ -149,6 +159,8 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 		// data 指向 Chkfrm 内部缓冲，异步 worker 可能晚于下一帧解析执行，必须拷贝。
 		payload := make([]byte, len(data))
 		copy(payload, data)
+		c.rxFrames.Add(1)
+		c.rxFrameBytes.Add(uint64(len(payload)))
 		req := Request{
 			conn: c,
 			msg:  NewMsgPackage(ptype, payload),
@@ -325,6 +337,10 @@ func (c *Connection) SetProperty(key string, value interface{}) {
 		if v, ok := value.(time.Time); ok {
 			c.rtime = v
 		}
+	case "lastReportAt":
+		if v, ok := value.(time.Time); ok {
+			c.lastReportAt = v
+		}
 	case "bridge":
 		if v, ok := value.(*bridge.Conn); ok {
 			c.binfo = v
@@ -353,6 +369,8 @@ func (c *Connection) GetProperty(key string) (interface{}, error) {
 		return c.htime, nil
 	case "rtime":
 		return c.rtime, nil
+	case "lastReportAt":
+		return c.lastReportAt, nil
 	case "bridge":
 		if c.binfo == nil {
 			return nil, errors.New("binfo is nil")
@@ -405,6 +423,13 @@ func (c *Connection) FastSetHtime(t time.Time) {
 	c.propertyLock.Unlock()
 }
 
+// FastSetLastReportAt 最近一次上报（698：IsReport 且主站 MSA=0）。
+func (c *Connection) FastSetLastReportAt(t time.Time) {
+	c.propertyLock.Lock()
+	c.lastReportAt = t
+	c.propertyLock.Unlock()
+}
+
 // FastGetRouting 读取 status、addr（单锁）。
 func (c *Connection) FastGetRouting() (status int, addr string) {
 	c.propertyLock.RLock()
@@ -421,4 +446,58 @@ func (c *Connection) RemoveProperty(key string) {
 	case "bridge":
 		c.binfo = nil
 	}
+}
+
+func (c *Connection) recordTx(n int) {
+	if n <= 0 {
+		return
+	}
+	c.txWrites.Add(1)
+	c.txWriteBytes.Add(uint64(n))
+	c.propertyLock.Lock()
+	c.lastTxAt = time.Now()
+	c.propertyLock.Unlock()
+}
+
+// ConnDetails 控制台/运维展示的连接快照（非热路径）。
+type ConnDetails struct {
+	ConnID       uint32
+	TermAddr     string // 规约侧地址/路由 addr
+	RemoteTCP    string // 对端 IP:port
+	Ctime        time.Time
+	Ltime        time.Time
+	Htime        time.Time
+	Rtime        time.Time // 最近业务收帧时间
+	LastTxAt     time.Time
+	LastReportAt time.Time // 最近上报（698：主站 MSA=0 的上报帧）
+	RxFrames     uint64
+	RxFrameBytes uint64
+	TxWrites     uint64
+	TxWriteBytes uint64
+}
+
+// Details 汇总当前连接信息（供菜单等读取；与 propertyLock/原子统计一致）。
+func (c *Connection) Details() ConnDetails {
+	c.propertyLock.RLock()
+	d := ConnDetails{
+		ConnID:       c.ConnID,
+		TermAddr:     c.addr,
+		Ctime:        c.ctime,
+		Ltime:        c.ltime,
+		Htime:        c.htime,
+		Rtime:        c.rtime,
+		LastTxAt:     c.lastTxAt,
+		LastReportAt: c.lastReportAt,
+	}
+	c.propertyLock.RUnlock()
+	d.RxFrames = c.rxFrames.Load()
+	d.RxFrameBytes = c.rxFrameBytes.Load()
+	d.TxWrites = c.txWrites.Load()
+	d.TxWriteBytes = c.txWriteBytes.Load()
+	if c.Conn != nil {
+		if a := c.Conn.RemoteAddr(); a != nil {
+			d.RemoteTCP = netaddr.FormatTCP(a)
+		}
+	}
+	return d
 }

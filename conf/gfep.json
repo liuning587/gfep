@@ -1,6 +1,7 @@
 {
   "Name":"gfep",
   "Host":"0.0.0.0",
+  "TCPNetwork": "tcp",
   "TCPPort":20083,
   "BridgeHost698":"",
   "MaxConn":50000,

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gfep/bridge"
+	"gfep/internal/netaddr"
 	"gfep/timewriter"
 	"gfep/utils"
 	"gfep/ziface"
@@ -121,6 +122,44 @@ func DoConnectionLost(conn ziface.IConnection) {
 	}
 }
 
+const usrConnTimeFmt = "2006-01-02 15:04:05"
+
+func fmtUsrConnTime(t time.Time) string {
+	if t.IsZero() {
+		return "-"
+	}
+	return t.Format(usrConnTimeFmt)
+}
+
+// printOnlineConnDetail 打印单条在线连接（终端/后台列表用）。
+func printOnlineConnDetail(tag string, seq int, termAddr string, connID uint32) {
+	srv := utils.GlobalObject.TCPServer
+	if srv == nil {
+		fmt.Printf("%s [%d] connID=%d 终端地址=%s (TCP服务未就绪)\n", tag, seq, connID, termAddr)
+		return
+	}
+	ic, err := srv.GetConnMgr().Get(connID)
+	if err != nil {
+		fmt.Printf("%s [%d] connID=%d 终端地址=%s (连接不存在或已断开)\n", tag, seq, connID, termAddr)
+		return
+	}
+	co, ok := ic.(*znet.Connection)
+	if !ok {
+		peer := "-"
+		if ra := ic.RemoteAddr(); ra != nil {
+			peer = netaddr.FormatTCP(ra)
+		}
+		fmt.Printf("%s [%d] connID=%d 终端地址=%s 对端=%s (连接类型非*znet.Connection)\n", tag, seq, connID, termAddr, peer)
+		return
+	}
+	d := co.Details()
+	fmt.Printf("%s [%d] connID=%d 通信地址=%s 对端=%s\n", tag, seq, connID, termAddr, d.RemoteTCP)
+	fmt.Printf("    连接建立:%s 登录:%s 心跳:%s 最近收帧:%s 最近发送:%s 最近上报(MSA=0):%s\n",
+		fmtUsrConnTime(d.Ctime), fmtUsrConnTime(d.Ltime), fmtUsrConnTime(d.Htime),
+		fmtUsrConnTime(d.Rtime), fmtUsrConnTime(d.LastTxAt), fmtUsrConnTime(d.LastReportAt))
+	fmt.Printf("    收: %d 帧 %d 字节 | 发: %d 次 %d 字节\n", d.RxFrames, d.RxFrameBytes, d.TxWrites, d.TxWriteBytes)
+}
+
 func usrInput() {
 	helper := `~~~~~~~~~~~~~~~~~~~
 1. 显示在线终端列表
@@ -143,29 +182,29 @@ func usrInput() {
 		case 1:
 			i := 0
 			for _, t := range regTmn376.snapshot() {
-				fmt.Printf("376[%d] %s, %d\n", i, t.addrStr, t.connID)
+				printOnlineConnDetail("376终端", i, t.addrStr, t.connID)
 				i++
 			}
 			for _, t := range regTmn698.snapshot() {
-				fmt.Printf("698[%d] %s, %d\n", i, t.addrStr, t.connID)
+				printOnlineConnDetail("698终端", i, t.addrStr, t.connID)
 				i++
 			}
 			for _, t := range regTmnNw.snapshot() {
-				fmt.Printf("Nw[%d] %s, %d\n", i, t.addrStr, t.connID)
+				printOnlineConnDetail("Nw终端", i, t.addrStr, t.connID)
 				i++
 			}
 		case 2:
 			i := 0
 			for _, a := range regApp376.snapshot() {
-				fmt.Printf("376[%d] %s, %d\n", i, a.addrStr, a.connID)
+				printOnlineConnDetail("376后台", i, a.addrStr, a.connID)
 				i++
 			}
 			for _, a := range regApp698.snapshot() {
-				fmt.Printf("698[%d] %s, %d\n", i, a.addrStr, a.connID)
+				printOnlineConnDetail("698后台", i, a.addrStr, a.connID)
 				i++
 			}
 			for _, a := range regAppNw.snapshot() {
-				fmt.Printf("Nw[%d] %s, %d\n", i, a.addrStr, a.connID)
+				printOnlineConnDetail("Nw后台", i, a.addrStr, a.connID)
 				i++
 			}
 		case 3:

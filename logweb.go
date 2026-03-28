@@ -2,12 +2,12 @@ package main
 
 import (
 	"gfep/internal/logx"
+	"gfep/internal/netaddr"
 	"gfep/utils"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 // startLogWebIfEnabled 按配置在后台监听 HTTP，对 LogDir 做静态文件服务（列举与下载）。
@@ -15,7 +15,7 @@ func startLogWebIfEnabled() {
 	if !utils.GlobalObject.LogWebEnabled {
 		return
 	}
-	host := strings.TrimSpace(utils.GlobalObject.LogWebHost)
+	host := netaddr.NormalizeHostForJoin(utils.GlobalObject.LogWebHost)
 	if host == "" {
 		host = "0.0.0.0"
 	}

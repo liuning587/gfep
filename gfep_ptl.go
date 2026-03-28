@@ -113,7 +113,7 @@ func (p *ptlProfile) Handle(request ziface.IRequest) {
 		p.handleFromApp(conn, connStatus, rData, msaStr, tmnStr)
 		return
 	}
-	p.handleFromTerminal(conn, connStatus, rData, msaStr, tmnStr)
+	p.handleFromTerminal(conn, connStatus, rData, msaStr, tmnStr, now)
 }
 
 func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rData []byte, msaStr, tmnStr string) {
@@ -143,13 +143,18 @@ func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rDat
 	}
 }
 
-func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int, rData []byte, msaStr, tmnStr string) {
+func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int, rData []byte, msaStr, tmnStr string, now time.Time) {
 	if connStatus != connIdle && connStatus != p.connT {
 		conn.NeedStop()
 		return
 	}
 	setRoutingStatus(conn, p.connT)
 	logPkt(p.log, "T", rData)
+
+	// 698 上报且报文中主站 MSA=0（与 forward 桥接语义一致）
+	if p.isReport != nil && p.isReport(rData) && p.msaGet(rData) == 0 {
+		setLastReportAt(conn, now)
+	}
 
 	switch p.getFrameType(rData) {
 	case zptl.LINK_LOGIN:

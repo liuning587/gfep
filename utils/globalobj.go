@@ -14,8 +14,9 @@ type GlobalObj struct {
 		Server
 	*/
 	TCPServer     ziface.IServer //当前Zinx的全局Server对象
-	Host          string         //当前服务器主机IP
+	Host          string         //监听地址：IPv4 如 0.0.0.0；IPv6 如 :: 或 ::1（勿再套方括号，除非整段 [::]）
 	TCPPort       int            //当前服务器主机监听端口号
+	TCPNetwork    string         //监听网络：tcp（推荐，支持 IPv4/IPv6 解析）、tcp4、tcp6；空等价 tcp
 	BridgeHost698 string         //698桥接主机IP
 	Name          string         //当前服务器名称
 
@@ -119,6 +120,7 @@ func init() {
 		Version:          "V0.2",
 		TCPPort:          20083,
 		Host:             "0.0.0.0",
+		TCPNetwork:       "tcp",
 		BridgeHost698:    "", //0.0.0.0:0
 		MaxConn:          50000,
 		MaxPacketSize:    2200,

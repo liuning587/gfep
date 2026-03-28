@@ -46,6 +46,15 @@ func setHtime(c ziface.IConnection, t time.Time) {
 	c.SetProperty("htime", t)
 }
 
+// setLastReportAt 698 终端上报：主站 MSA=0 且判定为上报帧时更新。
+func setLastReportAt(c ziface.IConnection, t time.Time) {
+	if co := asConn(c); co != nil {
+		co.FastSetLastReportAt(t)
+		return
+	}
+	c.SetProperty("lastReportAt", t)
+}
+
 func setRoutingStatus(c ziface.IConnection, status int) {
 	if co := asConn(c); co != nil {
 		co.FastSetRoutingStatus(status)
