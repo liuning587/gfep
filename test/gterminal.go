@@ -44,7 +44,7 @@ var crc16CcittTable = []uint16{
 	0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78,
 }
 
-//crc16Calculate crc16 calculate
+// crc16Calculate crc16 calculate
 func crc16Calculate(data []byte) uint16 {
 	var fcs uint16 = 0xffff
 
@@ -99,18 +99,21 @@ func send(c net.Conn, cNo int) {
 	sbuf[30] = byte((crc >> 8) & 0xff)
 	sbuf[31] = 0x16
 
-	for {
-		//客户端请求数据写入 conn，并传输
+	// 发送若干帧后关闭连接，便于自动化联调退出（原为无限循环）
+	const maxFrames = 5
+	for n := 0; n < maxFrames; n++ {
 		cnt, err := c.Write([]byte(sbuf))
 		if err != nil {
 			fmt.Printf("客户端发送数据失败 %d, %s\n", cNo, err)
-			c.Close()
+			_ = c.Close()
 			wg.Done()
-			break
+			return
 		}
 		fmt.Printf("客户端发送: %d, %d, % X\n", cNo, cnt, sbuf[:cnt])
 		time.Sleep(1 * time.Second)
 	}
+	_ = c.Close()
+	wg.Done()
 }
 
 func rece(c net.Conn, cNo int) {
@@ -134,23 +137,21 @@ func rece(c net.Conn, cNo int) {
 // ClientSocket 客户端连接
 func ClientSocket(count int) {
 	for i := 0; i < count; i++ {
-		wg.Add(1)
 		go func(i int) {
 			time.Sleep(time.Duration(i*10000) * time.Microsecond)
-			conn, err := net.Dial("tcp", "10.9.52.62:20083")
+			conn, err := net.Dial("tcp", "127.0.0.1:20083")
 			if err != nil {
 				fmt.Println("客户端建立连接失败", i, err)
 				return
 			}
 			fmt.Println("客户端建立连接OK", i)
 
-			wg.Add(1)
+			wg.Add(2)
 			go send(conn, i)
-
-			wg.Add(1)
 			go rece(conn, i)
 		}(i)
 	}
+	time.Sleep(300 * time.Millisecond)
 	wg.Wait()
 }
 
@@ -158,7 +159,7 @@ func main() {
 
 	fmt.Printf("698客户端测试\n")
 
-	ClientSocket(10)
+	ClientSocket(2)
 
-	wg.Wait()
+	// ClientSocket 内已 Wait，此处无需再次 Wait
 }

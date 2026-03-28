@@ -1,7 +1,7 @@
 package znet
 
 import (
-	"fmt"
+	"gfep/internal/logx"
 	"gfep/utils"
 	"gfep/ziface"
 	"strconv"
@@ -40,7 +40,7 @@ func (mh *MsgHandle) SendMsgToTaskQueue(request ziface.IRequest) {
 func (mh *MsgHandle) DoMsgHandler(request ziface.IRequest) {
 	handler, ok := mh.Apis[request.GetMsgID()]
 	if !ok {
-		fmt.Println("api msgID = ", request.GetMsgID(), " is not FOUND!")
+		logx.Warnf("api msgID=%d is not FOUND", request.GetMsgID())
 		return
 	}
 
@@ -58,19 +58,19 @@ func (mh *MsgHandle) AddRouter(msgID uint32, router ziface.IRouter) {
 	}
 	//2 添加msg与api的绑定关系
 	mh.Apis[msgID] = router
-	fmt.Println("Add api msgID = ", msgID)
+	if utils.GlobalObject.LogNetVerbose {
+		logx.Printf("Add api msgID = %d", msgID)
+	}
 }
 
 // StartOneWorker 启动一个Worker工作流程
 func (mh *MsgHandle) StartOneWorker(workerID int, taskQueue chan ziface.IRequest) {
-	fmt.Println("Worker ID = ", workerID, " is started.")
+	if utils.GlobalObject.LogNetVerbose {
+		logx.Printf("Worker ID = %d is started.", workerID)
+	}
 	//不断的等待队列中的消息
-	for {
-		select {
-		//有消息则取出队列的Request，并执行绑定的业务方法
-		case request := <-taskQueue:
-			mh.DoMsgHandler(request)
-		}
+	for request := range taskQueue {
+		mh.DoMsgHandler(request)
 	}
 }
 

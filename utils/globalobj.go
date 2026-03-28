@@ -40,10 +40,15 @@ type GlobalObj struct {
 	LogDir        string //日志所在文件夹 默认"./log"
 	LogFile       string //日志文件名称   默认""  --如果没有设置日志文件，打印信息将打印至stderr
 	LogDebugClose bool   //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
+	LogConnTrace  bool   //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
+	LogNetVerbose bool   //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
+	LogPacketHex  bool   //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
 
 	/*
 		Fep
 	*/
+	ForwardWorkers      int  //异步转发 worker 数量，<=0 时用默认 32
+	ForwardQueueLen     int  //转发任务队列长度，<=0 时用默认 16384
 	Timeout             int  //TCP连接超时时间(单位:分钟)
 	SupportCompress     bool //是否支持加密(南网使用)
 	SupportCas          bool //是否级联(南网使用)
@@ -99,6 +104,8 @@ func (g *GlobalObj) Reload() {
 
 // 提供init方法，默认加载
 func init() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	pwd, err := os.Getwd()
 	if err != nil {
 		pwd = "."
@@ -113,12 +120,17 @@ func init() {
 		MaxConn:          50000,
 		MaxPacketSize:    2200,
 		ConfFilePath:     pwd + "/conf/gfep.json",
-		WorkerPoolSize:   0,
+		WorkerPoolSize:   256,
 		MaxWorkerTaskLen: 1024,
 		MaxMsgChanLen:    8,
 		LogDir:           pwd + "/log",
 		LogFile:          "",
 		LogDebugClose:    false,
+		LogConnTrace:     false,
+		LogNetVerbose:    false,
+		LogPacketHex:     false,
+		ForwardWorkers:   32,
+		ForwardQueueLen:  16384,
 
 		Timeout:             30,
 		SupportCompress:     false,

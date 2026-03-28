@@ -87,23 +87,6 @@ func IsValid(ptype uint32, data []byte) (int32, uint32) {
 	return ret, PTL_UNKNOW
 }
 
-//判断是否为协议首字节
-func isFirstByte(ptype uint32, head byte) bool {
-	if head == 0x68 {
-		return true
-	}
-
-	if ptype == PTL_NWM && head == 0x88 {
-		return true
-	}
-
-	if ptype == PTL_SSAL && head == 0x98 {
-		return true
-	}
-
-	return false
-}
-
 //findFirstByte 获取指定协议报文首字节偏移
 func findFirstByte(ptype uint32, data []byte) int32 {
 	var i int32

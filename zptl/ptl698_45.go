@@ -6,50 +6,6 @@ import (
 	"time"
 )
 
-func ptl698_45HeadIsValid(buf []byte) int32 {
-	var fLen int32
-	var hLen uint16
-	var cs uint16
-
-	if len(buf) < 1 {
-		return 0
-	}
-
-	if buf[0] != 0x68 {
-		return -1
-	}
-
-	if len(buf) < 3 {
-		return 0
-	}
-
-	fLen = (int32(buf[2]&0x3f) << 8) + int32(buf[1])
-	if buf[2]&0x40 != 0 {
-		fLen *= 1024
-	}
-	if (fLen > Pmax698PtlFrameLen-2) || (fLen < 7) {
-		return -1
-	}
-
-	if len(buf) < 6 {
-		return 0
-	}
-
-	hLen = 6 + uint16(buf[4]&0x0f) + 1
-
-	if len(buf) < int(hLen+2) {
-		return 0
-	}
-
-	//check hcs
-	cs = Crc16Calculate(buf[1:hLen])
-	if cs != ((uint16(buf[hLen+1]) << 8) + uint16(buf[hLen])) {
-		return -1
-	}
-
-	return int32(hLen + 2)
-}
-
 func ptl698_45IsValid(buf []byte) int32 {
 	var fLen int32
 	var hlen uint16

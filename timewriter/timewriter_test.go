@@ -11,6 +11,6 @@ func TestWrite(t *testing.T) {
 		Compress:   true,
 		ReserveDay: 30,
 	}
-	logDebug := log.New(timeWriter, " [Debug] ", log.LstdFlags)
+	logDebug := log.New(timeWriter, " [Debug] ", log.LstdFlags|log.Lmicroseconds)
 	logDebug.Println("this is debug")
 }

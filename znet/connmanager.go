@@ -2,7 +2,8 @@ package znet
 
 import (
 	"errors"
-	"fmt"
+	"gfep/internal/logx"
+	"gfep/utils"
 	"gfep/ziface"
 	"sync"
 )
@@ -29,7 +30,9 @@ func (connMgr *ConnManager) Add(conn ziface.IConnection) {
 	//将conn连接添加到ConnMananger中
 	connMgr.connections[conn.GetConnID()] = conn
 
-	fmt.Println("connection add to ConnManager successfully: conn num = ", connMgr.Len())
+	if utils.GlobalObject.LogConnTrace {
+		logx.Printf("connection add to ConnManager successfully: conn num = %d", len(connMgr.connections))
+	}
 }
 
 // Remove 删除连接
@@ -41,7 +44,9 @@ func (connMgr *ConnManager) Remove(conn ziface.IConnection) {
 	//删除连接信息
 	delete(connMgr.connections, conn.GetConnID())
 
-	fmt.Println("connection Remove ConnID=", conn.GetConnID(), " successfully: conn num = ", connMgr.Len())
+	if utils.GlobalObject.LogConnTrace {
+		logx.Printf("connection Remove ConnID=%d successfully: conn num = %d", conn.GetConnID(), len(connMgr.connections))
+	}
 }
 
 // Get 利用ConnID获取链接
@@ -58,22 +63,28 @@ func (connMgr *ConnManager) Get(connID uint32) (ziface.IConnection, error) {
 
 // Len 获取当前连接
 func (connMgr *ConnManager) Len() int {
+	connMgr.connLock.RLock()
+	defer connMgr.connLock.RUnlock()
 	return len(connMgr.connections)
 }
 
 // ClearConn 清除并停止所有连接
 func (connMgr *ConnManager) ClearConn() {
-	//保护共享资源Map 加写锁
 	connMgr.connLock.Lock()
-	defer connMgr.connLock.Unlock()
+	conns := make([]ziface.IConnection, 0, len(connMgr.connections))
+	for _, c := range connMgr.connections {
+		conns = append(conns, c)
+	}
+	connMgr.connLock.Unlock()
 
-	//停止并删除全部的连接信息
-	for connID, conn := range connMgr.connections {
-		//停止
-		conn.Stop()
-		//删除
-		delete(connMgr.connections, connID)
+	for _, c := range conns {
+		c.Stop()
 	}
 
-	fmt.Println("Clear All Connections successfully: conn num = ", connMgr.Len())
+	if utils.GlobalObject.LogConnTrace {
+		connMgr.connLock.RLock()
+		n := len(connMgr.connections)
+		connMgr.connLock.RUnlock()
+		logx.Printf("Clear All Connections successfully: conn num = %d", n)
+	}
 }

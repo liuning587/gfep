@@ -2,9 +2,11 @@ package znet
 
 import (
 	"fmt"
+	"gfep/internal/logx"
 	"gfep/utils"
 	"gfep/ziface"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -39,6 +41,8 @@ type Server struct {
 	OnConnStart func(conn ziface.IConnection)
 	//该Server的连接断开时的Hook函数
 	OnConnStop func(conn ziface.IConnection)
+
+	nextConnID atomic.Uint32
 }
 
 // NewServer 创建一个服务器句柄
@@ -59,7 +63,7 @@ func NewServer() ziface.IServer {
 
 // Start 开启网络服务
 func (s *Server) Start() {
-	fmt.Printf("[START] Server name: %s,listenner at IP: %s, Port %d is starting\n", s.Name, s.IP, s.Port)
+	logx.Printf("[START] Server name: %s, listenner at IP: %s, Port %d is starting\n", s.Name, s.IP, s.Port)
 
 	//开启一个go去做服务端Linster业务
 	go func() {
@@ -69,32 +73,31 @@ func (s *Server) Start() {
 		//1 获取一个TCP的Addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
-			fmt.Println("resolve tcp addr err: ", err)
+			logx.Errorf("resolve tcp addr err: %v", err)
 			return
 		}
 
 		//2 监听服务器地址
 		listener, err := net.ListenTCP(s.IPVersion, addr)
 		if err != nil {
-			fmt.Println("listen", s.IPVersion, "err", err)
+			logx.Errorf("listen %s err: %v", s.IPVersion, err)
 			return
 		}
 
 		//已经监听成功
-		fmt.Println("start Zinx server  ", s.Name, " succ, now listenning...")
-
-		//TODO server.go 应该有一个自动生成ID的方法
-		cid := uint32(0)
+		logx.Printf("start Zinx server %s succ, now listenning...", s.Name)
 
 		//3 启动server网络连接业务
 		for {
 			//3.1 阻塞等待客户端建立连接请求
 			conn, err := listener.AcceptTCP()
 			if err != nil {
-				fmt.Println("Accept err ", err)
+				logx.Errorf("Accept err: %v", err)
 				continue
 			}
-			fmt.Println("Get conn remote addr = ", conn.RemoteAddr().String())
+			if utils.GlobalObject.LogConnTrace {
+				logx.Printf("Get conn remote addr = %s", conn.RemoteAddr().String())
+			}
 
 			//3.2 设置服务器最大连接控制,如果超过最大连接，那么则关闭此新的连接
 			if s.ConnMgr.Len() >= utils.GlobalObject.MaxConn {
@@ -105,12 +108,16 @@ func (s *Server) Start() {
 			_ = conn.SetKeepAlive(true)
 			_ = conn.SetKeepAlivePeriod(time.Minute * 2)
 			_ = conn.SetNoDelay(true)
-			_ = conn.SetReadBuffer(2200)
-			_ = conn.SetWriteBuffer(2200)
+			bufSz := int(utils.GlobalObject.MaxPacketSize)
+			if bufSz <= 0 {
+				bufSz = 2200
+			}
+			_ = conn.SetReadBuffer(bufSz)
+			_ = conn.SetWriteBuffer(bufSz)
 
 			//3.3 处理该新连接请求的 业务 方法， 此时应该有 handler 和 conn是绑定的
+			cid := s.allocConnID()
 			dealConn := NewConntion(s, conn, cid, s.msgHandler)
-			cid++
 
 			//3.4 启动当前链接的处理业务
 			go dealConn.Start()
@@ -120,7 +127,7 @@ func (s *Server) Start() {
 
 // Stop 停止服务
 func (s *Server) Stop() {
-	fmt.Println("[STOP] Zinx server , name ", s.Name)
+	logx.Printf("[STOP] Zinx server, name %s", s.Name)
 
 	//将其他需要清理的连接信息或者其他信息 也要一并停止或者清理
 	s.ConnMgr.ClearConn()
@@ -128,12 +135,26 @@ func (s *Server) Stop() {
 
 // Serve 运行服务
 func (s *Server) Serve() {
+	utils.GlobalObject.TCPServer = s
 	s.Start()
 
 	//TODO Server.Serve() 是否在启动服务的时候 还要处理其他的事情呢 可以在这里添加
 
 	//阻塞,否则主Go退出， listenner的go将会退出
 	select {}
+}
+
+// allocConnID 分配未占用的连接 ID（uint32 回绕时跳过仍占用的号）。
+func (s *Server) allocConnID() uint32 {
+	for {
+		id := s.nextConnID.Add(1)
+		if id == 0 {
+			continue
+		}
+		if _, err := s.ConnMgr.Get(id); err != nil {
+			return id
+		}
+	}
 }
 
 // AddRouter 路由功能：给当前服务注册一个路由业务方法，供客户端链接处理使用
@@ -159,7 +180,9 @@ func (s *Server) SetOnConnStop(hookFunc func(ziface.IConnection)) {
 // CallOnConnStart 调用连接OnConnStart Hook函数
 func (s *Server) CallOnConnStart(conn ziface.IConnection) {
 	if s.OnConnStart != nil {
-		fmt.Println("---> CallOnConnStart....")
+		if utils.GlobalObject.LogConnTrace {
+			logx.Println("---> CallOnConnStart....")
+		}
 		s.OnConnStart(conn)
 	}
 }
@@ -167,17 +190,19 @@ func (s *Server) CallOnConnStart(conn ziface.IConnection) {
 // CallOnConnStop 调用连接OnConnStop Hook函数
 func (s *Server) CallOnConnStop(conn ziface.IConnection) {
 	if s.OnConnStop != nil {
-		fmt.Println("---> CallOnConnStop....")
+		if utils.GlobalObject.LogConnTrace {
+			logx.Println("---> CallOnConnStop....")
+		}
 		s.OnConnStop(conn)
 	}
 }
 
 func init() {
-	fmt.Println(zinxLogo)
-	fmt.Println(topLine)
-	fmt.Printf("%s [Github] https://github.com/liuning587/gfep       %s\n", borderLine, borderLine)
-	fmt.Println(bottomLine)
-	fmt.Printf("[gfep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
+	logx.Println(zinxLogo)
+	logx.Println(topLine)
+	logx.Printf("%s [Github] https://github.com/liuning587/gfep       %s\n", borderLine, borderLine)
+	logx.Println(bottomLine)
+	logx.Printf("[gfep] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
 		utils.GlobalObject.Version,
 		utils.GlobalObject.MaxConn,
 		utils.GlobalObject.MaxPacketSize)

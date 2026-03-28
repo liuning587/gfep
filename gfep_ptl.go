@@ -1,0 +1,323 @@
+package main
+
+import (
+	"gfep/bridge"
+	"gfep/utils"
+	"gfep/ziface"
+	"gfep/zptl"
+	"log"
+	"strings"
+	"time"
+)
+
+// ptlProfile 376 / 698 / NW 共用处理骨架。
+// 级联(SupportCasLink)、APP Online 响应等待办项仍依赖配置与现场扩展，此处保留原 todo 语义。
+type ptlProfile struct {
+	ptype  uint32
+	regApp *appRegistry
+	regTmn *tmnRegistry
+	log    *log.Logger
+	connA  int
+	connT  int
+
+	broadcast func(tmn string) bool
+
+	msaGet       func([]byte) int
+	getDir       func([]byte) int
+	getFrameType func([]byte) int
+	addrGet      func([]byte) []byte
+	addrStr      func([]byte) string
+	buildReply   func(in, out []byte) int
+
+	extras698      bool
+	isReport       func([]byte) bool
+	buildReportAck func(in, out []byte) int
+}
+
+var profile376, profile698, profileNw ptlProfile
+
+func initPtlProfiles() {
+	profile376 = ptlProfile{
+		ptype:        zptl.PTL_1376_1,
+		regApp:       regApp376,
+		regTmn:       regTmn376,
+		log:          log376,
+		connA:        connA376,
+		connT:        connT376,
+		broadcast:    func(t string) bool { return strings.HasSuffix(t, "FF") },
+		msaGet:       zptl.Ptl1376_1MsaGet,
+		getDir:       zptl.Ptl1376_1GetDir,
+		getFrameType: zptl.Ptl1376_1GetFrameType,
+		addrGet:      zptl.Ptl1376_1AddrGet,
+		addrStr:      zptl.Ptl1376_1AddrStr,
+		buildReply:   zptl.Ptl1376_1BuildReplyPacket,
+	}
+	profile698 = ptlProfile{
+		ptype:          zptl.PTL_698_45,
+		regApp:         regApp698,
+		regTmn:         regTmn698,
+		log:            log698,
+		connA:          connA698,
+		connT:          connT698,
+		broadcast:      func(t string) bool { return strings.HasSuffix(t, "AA") },
+		msaGet:         zptl.Ptl698_45MsaGet,
+		getDir:         zptl.Ptl698_45GetDir,
+		getFrameType:   zptl.Ptl698_45GetFrameType,
+		addrGet:        zptl.Ptl698_45AddrGet,
+		addrStr:        zptl.Ptl698_45AddrStr,
+		buildReply:     zptl.Ptl698_45BuildReplyPacket,
+		extras698:      true,
+		isReport:       zptl.Ptl698_45IsReport,
+		buildReportAck: zptl.Ptl698_45BuildReportAckPacket,
+	}
+	profileNw = ptlProfile{
+		ptype:        zptl.PTL_NW,
+		regApp:       regAppNw,
+		regTmn:       regTmnNw,
+		log:          logNw,
+		connA:        connANW,
+		connT:        connTNW,
+		broadcast:    func(t string) bool { return strings.HasSuffix(t, "FF") },
+		msaGet:       zptl.PtlNwMsaGet,
+		getDir:       zptl.PtlNwGetDir,
+		getFrameType: zptl.PtlNwGetFrameType,
+		addrGet:      zptl.PtlNwAddrGet,
+		addrStr:      zptl.PtlNwAddrStr,
+		buildReply:   zptl.PtlNwBuildReplyPacket,
+	}
+}
+
+func (p *ptlProfile) Handle(request ziface.IRequest) {
+	conn := request.GetConnection()
+	if conn.IsStop() {
+		return
+	}
+	rData := request.GetData()
+	if !zptl.HandlerParseLenOK(p.ptype, rData) {
+		return
+	}
+	connStatus, ok := getConnStatus(conn)
+	if !ok {
+		// 与 IConnection 其它实现保持行为：无法解析 status 则断开
+		conn.NeedStop()
+		return
+	}
+
+	now := time.Now()
+	msaStr := msaString(p.msaGet(rData))
+	tmnStr := p.addrStr(p.addrGet(rData))
+
+	touchRx(conn, now)
+
+	if p.getDir(rData) == 0 {
+		p.handleFromApp(conn, connStatus, rData, msaStr, tmnStr)
+		return
+	}
+	p.handleFromTerminal(conn, connStatus, rData, msaStr, tmnStr)
+}
+
+func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rData []byte, msaStr, tmnStr string) {
+	if connStatus != connIdle && connStatus != p.connA {
+		conn.NeedStop()
+		return
+	}
+	setRoutingStatus(conn, p.connA)
+	logPkt(p.log, "A", rData)
+
+	isNewApp := p.regApp.registerOrUpdate(conn.GetConnID(), msaStr)
+	if isNewApp {
+		setRoutingAddr(conn, msaStr)
+		if p.log != nil {
+			p.log.Println("后台登录", msaStr, "connID", conn.GetConnID())
+		}
+	}
+
+	if p.getFrameType(rData) == zptl.ONLINE {
+		// todo: 处理 app Online 响应
+		return
+	}
+
+	targets := p.regTmn.forwardTargetsAppToTmn(tmnStr, p.broadcast(tmnStr))
+	for _, id := range targets {
+		submitForward(conn, id, rData)
+	}
+}
+
+func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int, rData []byte, msaStr, tmnStr string) {
+	if connStatus != connIdle && connStatus != p.connT {
+		conn.NeedStop()
+		return
+	}
+	setRoutingStatus(conn, p.connT)
+	logPkt(p.log, "T", rData)
+
+	switch p.getFrameType(rData) {
+	case zptl.LINK_LOGIN:
+		if utils.GlobalObject.SupportCasLink {
+			// todo: 级联终端登录（与 SupportCas / 多表位配合）
+		}
+
+		preAddr := preAddrForTmnLogin(conn)
+		if preAddr != tmnStr {
+			isNewTmn, evicted, resetBridgeCur := p.regTmn.Login(conn.GetConnID(), tmnStr, utils.GlobalObject.SupportCommTermianl, utils.GlobalObject.SupportCasLink)
+			for _, id := range evicted {
+				if p.log != nil {
+					p.log.Println("终端重复登录", tmnStr, "删除", id)
+				}
+				if p.extras698 {
+					stopBridgeForConnID(utils.GlobalObject.TCPServer, id)
+				}
+			}
+			if resetBridgeCur {
+				if p.log != nil {
+					p.log.Println("终端登录地址发生变更", tmnStr, "删除", conn.GetConnID())
+				}
+				if p.extras698 {
+					stopBridgeForConnID(utils.GlobalObject.TCPServer, conn.GetConnID())
+				}
+			}
+			if isNewTmn {
+				if p.extras698 {
+					p.tryStartBridge698(conn, rData)
+				}
+				if p.log != nil {
+					p.log.Println("终端登录", tmnStr, "connID", conn.GetConnID())
+				}
+			} else {
+				if p.log != nil {
+					p.log.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
+				}
+			}
+		} else {
+			if p.log != nil {
+				p.log.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
+			}
+		}
+
+		reply := make([]byte, 128)
+		plen := p.buildReply(rData, reply)
+		if err := conn.SendBuffMsg(reply[0:plen]); err != nil {
+			if p.log != nil {
+				p.log.Println(err)
+			}
+		} else {
+			setLtime(conn, time.Now())
+			setRoutingAddr(conn, tmnStr)
+			if p.log != nil {
+				p.log.Printf("L: % X\n", reply[0:plen])
+			}
+		}
+		return
+
+	case zptl.LINK_HAERTBEAT:
+		if utils.GlobalObject.SupportReplyHeart {
+			if connStatus != p.connT {
+				if p.log != nil {
+					p.log.Println("终端未登录就发心跳", tmnStr)
+				}
+				conn.NeedStop()
+			} else {
+				preAddr := preAddrForTmnLogin(conn)
+				if preAddr == tmnStr {
+					// todo: 级联心跳时判断级联地址是否存在
+					if p.log != nil {
+						p.log.Println("终端心跳", tmnStr)
+					}
+					setHtime(conn, time.Now())
+					reply := make([]byte, 128)
+					plen := p.buildReply(rData, reply)
+					if err := conn.SendBuffMsg(reply[0:plen]); err != nil {
+						if p.log != nil {
+							p.log.Println(err)
+						}
+					} else {
+						if p.log != nil {
+							p.log.Printf("H: % X", reply[0:plen])
+						}
+					}
+				} else {
+					if p.log != nil {
+						p.log.Println("终端登录地址与心跳地址不匹配!", preAddr, tmnStr)
+					}
+					conn.NeedStop()
+				}
+			}
+			return
+		}
+
+	case zptl.LINK_EXIT:
+		if connStatus != p.connT {
+			if p.log != nil {
+				p.log.Println("终端未登录就想退出", tmnStr)
+			}
+		} else {
+			if p.log != nil {
+				p.log.Println("终端退出", tmnStr)
+			}
+			reply := make([]byte, 128)
+			plen := p.buildReply(rData, reply)
+			if err := conn.SendMsg(reply[0:plen]); err != nil && p.log != nil {
+				p.log.Println(err)
+			}
+		}
+		conn.NeedStop()
+		return
+
+	default:
+		break
+	}
+
+	if p.extras698 && utils.GlobalObject.SupportReplyReport && p.isReport != nil && p.buildReportAck != nil && p.isReport(rData) {
+		reply := make([]byte, 512)
+		plen := p.buildReportAck(rData, reply)
+		if err := conn.SendBuffMsg(reply[0:plen]); err != nil {
+			if p.log != nil {
+				p.log.Println(err)
+			}
+		} else if p.log != nil {
+			p.log.Printf("K: % X", reply[0:plen])
+		}
+	}
+
+	targets := p.regApp.forwardTargets(msaStr)
+	isMatch := len(targets) > 0
+	for _, id := range targets {
+		submitForward(conn, id, rData)
+	}
+
+	if p.extras698 && (msaStr == "0" || !isMatch) {
+		b, err := conn.GetProperty("bridge")
+		if err == nil {
+			if v, ok := b.(*bridge.Conn); ok {
+				_ = v.Send(rData)
+			}
+		}
+	}
+}
+
+func (p *ptlProfile) tryStartBridge698(conn ziface.IConnection, rData []byte) {
+	host := utils.GlobalObject.BridgeHost698
+	if len(host) == 0 || host[0] == '0' {
+		return
+	}
+	if ob, err := conn.GetProperty("bridge"); err == nil {
+		if v, ok := ob.(*bridge.Conn); ok {
+			v.Stop()
+		}
+	}
+	tsa := zptl.Ptl698_45AddrGet(rData)
+	b := bridge.NewConn(host, tsa[1:], zptl.PTL_698_45, time.Minute, func(data []byte) {
+		if err := conn.SendBuffMsg(data); err != nil {
+			if p.log != nil {
+				p.log.Println(err)
+			}
+		} else if p.log != nil {
+			p.log.Printf("B: % X\n", data)
+		}
+	})
+	b.Start()
+	conn.SetProperty("bridge", b)
+	if p.log != nil {
+		p.log.Printf("B: % X create!\n", tsa)
+	}
+}

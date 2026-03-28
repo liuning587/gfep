@@ -2,8 +2,8 @@ package znet
 
 import (
 	"errors"
-	"fmt"
 	"gfep/bridge"
+	"gfep/internal/logx"
 	"gfep/utils"
 	"gfep/ziface"
 	"gfep/zptl"
@@ -83,7 +83,7 @@ func (c *Connection) StartWriter() {
 			//有数据要写给客户端
 			if _, err := c.Conn.Write(data); err != nil {
 				_ = c.Conn.Close()
-				fmt.Println("Send Data error:, ", err, " Conn Writer exit")
+				logx.Errorf("Send Data error: %v Conn Writer exit", err)
 				return
 			}
 			//fmt.Printf("Send data succ! data = %+v\n", data)
@@ -93,11 +93,11 @@ func (c *Connection) StartWriter() {
 				if _, err := c.Conn.Write(data); err != nil {
 					c.closeMsgBuffChan()
 					_ = c.Conn.Close()
-					fmt.Println("Send Buff Data error:, ", err, " Conn Writer exit")
+					logx.Errorf("Send Buff Data error: %v Conn Writer exit", err)
 					return
 				}
-			} else {
-				fmt.Println("msgBuffChan is Closed")
+			} else if utils.GlobalObject.LogNetVerbose {
+				logx.Println("msgBuffChan is Closed")
 			}
 
 		case <-c.ExitBuffChan:
@@ -123,7 +123,7 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 			go c.MsgHandler.DoMsgHandler(&req)
 		}
 	} else {
-		fmt.Println("arg is not Connection")
+		logx.Errorf("arg is not Connection")
 	}
 }
 
@@ -254,8 +254,12 @@ func (c *Connection) SendBuffMsg(data []byte) (err error) {
 		}
 	}()
 
-	ch <- data
-	return nil
+	select {
+	case ch <- data:
+		return nil
+	default:
+		return errors.New("send buffer full")
+	}
 }
 
 // SendMsgByConnID 直接将Message数据发送数据给远程的TCP客户端
@@ -334,6 +338,56 @@ func (c *Connection) GetProperty(key string) (interface{}, error) {
 		return c.binfo, nil
 	}
 	return nil, errors.New("no property found")
+}
+
+// FastTouchRx 仅更新最近接收时间（单锁，热路径用）。
+func (c *Connection) FastTouchRx(t time.Time) {
+	c.propertyLock.Lock()
+	c.rtime = t
+	c.propertyLock.Unlock()
+}
+
+// FastTouchRxAndStatus 合并更新接收时间与角色状态。
+func (c *Connection) FastTouchRxAndStatus(t time.Time, status int) {
+	c.propertyLock.Lock()
+	c.rtime = t
+	c.status = status
+	c.propertyLock.Unlock()
+}
+
+// FastSetRoutingStatus 仅更新 status。
+func (c *Connection) FastSetRoutingStatus(status int) {
+	c.propertyLock.Lock()
+	c.status = status
+	c.propertyLock.Unlock()
+}
+
+// FastSetRoutingAddr 仅更新 addr。
+func (c *Connection) FastSetRoutingAddr(addr string) {
+	c.propertyLock.Lock()
+	c.addr = addr
+	c.propertyLock.Unlock()
+}
+
+// FastSetLtime 登录时间。
+func (c *Connection) FastSetLtime(t time.Time) {
+	c.propertyLock.Lock()
+	c.ltime = t
+	c.propertyLock.Unlock()
+}
+
+// FastSetHtime 心跳时间。
+func (c *Connection) FastSetHtime(t time.Time) {
+	c.propertyLock.Lock()
+	c.htime = t
+	c.propertyLock.Unlock()
+}
+
+// FastGetRouting 读取 status、addr（单锁）。
+func (c *Connection) FastGetRouting() (status int, addr string) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+	return c.status, c.addr
 }
 
 // RemoveProperty 移除链接属性

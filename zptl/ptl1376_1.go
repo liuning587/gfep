@@ -64,19 +64,6 @@ func ptl1376_1IsValid(buf []byte) int32 {
 	return int32(userDataLength + 8)
 }
 
-//--------------------------------------------------------------------
-
-func getFn(buf []byte) uint16 {
-	var fn uint16 = uint16(buf[1]) * 8
-
-	for i := 0; i < 8; i++ {
-		if ((buf[0] >> i) & 0x01) == 0x01 {
-			fn += uint16(i) + 1
-		}
-	}
-	return fn
-}
-
 // Ptl1376_1GetDir 获取报文传输方向,0:主站-->终端, 1:终端-->主站
 func Ptl1376_1GetDir(buf []byte) int {
 	if buf[6]&0x80 != 0 {

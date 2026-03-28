@@ -169,7 +169,7 @@ func PrintBuf(offset uint32, data []byte) {
 		fmt.Printf("%02X", bytes[lineBytes])
 		lineBytes++
 
-		if 16 == lineBytes {
+		if lineBytes == 16 {
 			fmt.Printf("   *")
 			for j := 0; j < 16; j++ {
 				if IsPrint(bytes[j]) {
@@ -183,7 +183,7 @@ func PrintBuf(offset uint32, data []byte) {
 		}
 	}
 
-	if 0 != lineBytes {
+	if lineBytes != 0 {
 		cnt = 16 - lineBytes
 		cnt = (cnt << 1) + cnt
 		for i := 0; i < int(cnt); i++ {
@@ -204,7 +204,7 @@ func PrintBuf(offset uint32, data []byte) {
 //PrintBuffer printbuffer
 func PrintBuffer(format string, data []byte) {
 	if len(format) != 0 {
-		fmt.Printf(format)
+		fmt.Print(format)
 	}
 
 	for _, v := range data {

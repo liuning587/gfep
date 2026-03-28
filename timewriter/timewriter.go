@@ -4,8 +4,8 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"gfep/internal/logx"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,7 +42,7 @@ func (l *TimeWriter) Write(p []byte) (n int, err error) {
 
 	if l.file == nil {
 		if err = l.openExistingOrNew(len(p)); err != nil {
-			fmt.Printf("write fail, msg(%s)\n", err)
+			logx.Errorf("module=timewriter write fail: %v", err)
 			return 0, err
 		}
 	}
@@ -90,7 +90,7 @@ func (l *TimeWriter) rotate() error {
 }
 
 func (l *TimeWriter) oldLogFiles() ([]logInfo, error) {
-	files, err := ioutil.ReadDir(l.Dir)
+	entries, err := os.ReadDir(l.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("can't read log file directory: %s", err)
 	}
@@ -98,24 +98,29 @@ func (l *TimeWriter) oldLogFiles() ([]logInfo, error) {
 
 	prefix, ext := l.prefixAndExt()
 
-	for _, f := range files {
-		if f.IsDir() {
+	for _, e := range entries {
+		if e.IsDir() {
 			continue
 		}
-		if f.Name() == filepath.Base(l.curFilename) {
+		fi, errInfo := e.Info()
+		if errInfo != nil {
+			logx.Printf("module=timewriter oldLogFiles stat name=%q: %v", e.Name(), errInfo)
 			continue
 		}
-		if t, err := l.timeFromName(f.Name(), prefix, ext); err == nil {
-			logFiles = append(logFiles, logInfo{t, f})
+		if fi.Name() == filepath.Base(l.curFilename) {
+			continue
+		}
+		if t, err := l.timeFromName(fi.Name(), prefix, ext); err == nil {
+			logFiles = append(logFiles, logInfo{t, fi})
 			continue
 		} else {
-			fmt.Printf("err1(%s)\n", err)
+			logx.Printf("module=timewriter oldLogFiles skip name=%q: %v", fi.Name(), err)
 		}
-		if t, err := l.timeFromName(f.Name(), prefix, ext+compressSuffix); err == nil {
-			logFiles = append(logFiles, logInfo{t, f})
+		if t, err := l.timeFromName(fi.Name(), prefix, ext+compressSuffix); err == nil {
+			logFiles = append(logFiles, logInfo{t, fi})
 			continue
 		} else {
-			fmt.Printf("err2(%s)\n", err)
+			logx.Printf("module=timewriter oldLogFiles skip name=%q: %v", fi.Name(), err)
 		}
 	}
 
@@ -215,7 +220,7 @@ func (l *TimeWriter) millRunOnce() error {
 }
 
 func (l *TimeWriter) millRun() {
-	for _ = range l.millCh {
+	for range l.millCh {
 		_ = l.millRunOnce()
 	}
 }

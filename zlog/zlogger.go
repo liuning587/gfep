@@ -24,11 +24,11 @@ const (
 const (
 	BitDate         = 1 << iota                            //日期标记位  2019/01/23
 	BitTime                                                //时间标记位  01:23:12
-	BitMicroSeconds                                        //微秒级标记位 01:23:12.111222
+	BitMicroSeconds                                        // 毫秒（小数点后 3 位），如 01:23:12.345；常量名沿用历史
 	BitLongFile                                            // 完整文件名称 /home/go/src/zinx/server.go
 	BitShortFile                                           // 最后文件名   server.go
 	BitLevel                                               // 当前日志级别： 0(Debug), 1(Info), 2(Warn), 3(Error), 4(Panic), 5(Fatal)
-	BitStdFlag      = BitDate | BitTime                    //标准头部日志格式
+	BitStdFlag      = BitDate | BitTime | BitMicroSeconds  // 标准头部：日期、时间、毫秒
 	BitDefault      = BitLevel | BitShortFile | BitStdFlag //默认日志头部格式
 )
 
@@ -125,10 +125,9 @@ func (log *ZinxLogger) formatHeader(buf *bytes.Buffer, t time.Time, file string,
 			itoa(buf, min, 2)
 			buf.WriteByte(':') // "11:15:"
 			itoa(buf, sec, 2)  // "11:15:33"
-			//微秒被标记
 			if log.flag&BitMicroSeconds != 0 {
 				buf.WriteByte('.')
-				itoa(buf, t.Nanosecond()/1e3, 6) // "11:15:33.123123
+				itoa(buf, t.Nanosecond()/1e6, 3)
 			}
 			buf.WriteByte(' ')
 		}
@@ -201,14 +200,14 @@ func (log *ZinxLogger) OutPut(level int, s string) error {
 
 // ====> Debug <====
 func (log *ZinxLogger) Debugf(format string, v ...interface{}) {
-	if log.debugClose == true {
+	if log.debugClose {
 		return
 	}
 	_ = log.OutPut(LogDebug, fmt.Sprintf(format, v...))
 }
 
 func (log *ZinxLogger) Debug(v ...interface{}) {
-	if log.debugClose == true {
+	if log.debugClose {
 		return
 	}
 	_ = log.OutPut(LogDebug, fmt.Sprintln(v...))
