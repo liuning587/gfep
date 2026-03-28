@@ -68,6 +68,15 @@ func (connMgr *ConnManager) Len() int {
 	return len(connMgr.connections)
 }
 
+// Range 遍历当前连接（持读锁；回调内勿长时间阻塞或再次对 ConnManager 加锁）。
+func (connMgr *ConnManager) Range(f func(ziface.IConnection)) {
+	connMgr.connLock.RLock()
+	defer connMgr.connLock.RUnlock()
+	for _, c := range connMgr.connections {
+		f(c)
+	}
+}
+
 // ClearConn 清除并停止所有连接
 func (connMgr *ConnManager) ClearConn() {
 	connMgr.connLock.Lock()

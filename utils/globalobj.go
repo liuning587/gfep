@@ -53,15 +53,17 @@ type GlobalObj struct {
 	/*
 		Fep
 	*/
-	ForwardWorkers      int  //异步转发 worker 数量，<=0 时用默认 32
-	ForwardQueueLen     int  //转发任务队列长度，<=0 时用默认 16384
-	Timeout             int  //TCP连接超时时间(单位:分钟)
-	SupportCompress     bool //是否支持加密(南网使用)
-	SupportCas          bool //是否级联(南网使用)
-	SupportCasLink      bool //是否级联终端登陆、心跳(南网使用)
-	SupportCommTermianl bool //是否支持终端重复登陆(Y/N)
-	SupportReplyHeart   bool //是否支持前置机维护心跳(Y/N)
-	SupportReplyReport  bool //是否支持前置机确认上报(Y/N)
+	ForwardWorkers         int  //异步转发 worker 数量，<=0 时用默认 32
+	ForwardQueueLen        int  //转发任务队列长度，<=0 时用默认 16384
+	FirstFrameTimeoutMin   int  // TCP 建链后若一直收不到完整规约帧则断开，单位分钟；默认 1；0 表示关闭
+	PostLoginRxIdleMinutes int  // 登录成功后若连续如此长时间未收到完整规约帧则断开，单位分钟；默认 10；0 表示关闭
+	Timeout                int  //TCP连接超时时间(单位:分钟)
+	SupportCompress        bool //是否支持加密(南网使用)
+	SupportCas             bool //是否级联(南网使用)
+	SupportCasLink         bool //是否级联终端登陆、心跳(南网使用)
+	SupportCommTermianl    bool //是否支持终端重复登陆(Y/N)
+	SupportReplyHeart      bool //是否支持前置机维护心跳(Y/N)
+	SupportReplyReport     bool //是否支持前置机确认上报(Y/N)
 }
 
 // GlobalObject 定义一个全局的对象
@@ -92,10 +94,21 @@ func (g *GlobalObj) Reload() {
 		log.Printf("gfep: read config %s: %v", g.ConfFilePath, err)
 		return
 	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		log.Printf("gfep: parse config %s: %v", g.ConfFilePath, err)
+		return
+	}
 	loaded := *g
 	if err := json.Unmarshal(data, &loaded); err != nil {
 		log.Printf("gfep: parse config %s: %v", g.ConfFilePath, err)
 		return
+	}
+	if _, ok := raw["FirstFrameTimeoutMin"]; !ok {
+		loaded.FirstFrameTimeoutMin = g.FirstFrameTimeoutMin
+	}
+	if _, ok := raw["PostLoginRxIdleMinutes"]; !ok {
+		loaded.PostLoginRxIdleMinutes = g.PostLoginRxIdleMinutes
 	}
 	*g = loaded
 
@@ -143,13 +156,15 @@ func init() {
 		ForwardWorkers:      32,
 		ForwardQueueLen:     16384,
 
-		Timeout:             30,
-		SupportCompress:     false,
-		SupportCas:          false,
-		SupportCasLink:      false,
-		SupportCommTermianl: true,
-		SupportReplyHeart:   true,
-		SupportReplyReport:  false,
+		FirstFrameTimeoutMin:   1,
+		PostLoginRxIdleMinutes: 10,
+		Timeout:                30,
+		SupportCompress:        false,
+		SupportCas:             false,
+		SupportCasLink:         false,
+		SupportCommTermianl:    true,
+		SupportReplyHeart:      true,
+		SupportReplyReport:     false,
 	}
 
 	//从配置文件中加载一些用户配置的参数

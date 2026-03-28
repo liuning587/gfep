@@ -38,6 +38,18 @@ func setLtime(c ziface.IConnection, t time.Time) {
 	c.SetProperty("ltime", t)
 }
 
+// ensureSessionLtimeIfUnset 主站首帧起算「登录后」空闲超时：仅当 ltime 仍为零时写入。
+func ensureSessionLtimeIfUnset(c ziface.IConnection, t time.Time) {
+	v, err := c.GetProperty("ltime")
+	if err != nil {
+		return
+	}
+	lt, ok := v.(time.Time)
+	if !ok || lt.IsZero() {
+		setLtime(c, t)
+	}
+}
+
 func setHtime(c ziface.IConnection, t time.Time) {
 	if co := asConn(c); co != nil {
 		co.FastSetHtime(t)

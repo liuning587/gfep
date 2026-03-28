@@ -18,6 +18,8 @@
   "LogWebPort": 20084,
   "LogFile":"gfep.log",
   "LogDebugClose": true,
+  "FirstFrameTimeoutMin": 1,
+  "PostLoginRxIdleMinutes": 10,
   "Timeout": 30,
   "SupportCompress":     false,
   "SupportCas":          false,

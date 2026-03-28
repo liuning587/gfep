@@ -92,6 +92,8 @@ func (s *Server) Start() {
 
 		logx.Printf("start Zinx server %s succ, now listening on %s", s.Name, netaddr.FormatTCP(listener.Addr()))
 
+		go s.runRxIdleSweep()
+
 		//3 启动server网络连接业务
 		for {
 			//3.1 阻塞等待客户端建立连接请求
@@ -150,6 +152,53 @@ func (s *Server) Serve() {
 }
 
 // allocConnID 分配未占用的连接 ID（uint32 回绕时跳过仍占用的号）。
+// runRxIdleSweep 定时检查：建链后长期无首帧、登录后长期无收包则关闭连接。
+func (s *Server) runRxIdleSweep() {
+	g := utils.GlobalObject
+	firstTO := time.Duration(g.FirstFrameTimeoutMin) * time.Minute
+	idleTO := time.Duration(g.PostLoginRxIdleMinutes) * time.Minute
+	if firstTO <= 0 && idleTO <= 0 {
+		return
+	}
+
+	cm, ok := s.ConnMgr.(*ConnManager)
+	if !ok {
+		return
+	}
+
+	t := time.NewTicker(30 * time.Second)
+	defer t.Stop()
+	for range t.C {
+		now := time.Now()
+		cm.Range(func(ic ziface.IConnection) {
+			c, ok := ic.(*Connection)
+			if !ok || c.stopped.Load() {
+				return
+			}
+			d := c.Details()
+
+			if firstTO > 0 && d.RxFrames == 0 && !d.Ctime.IsZero() && now.Sub(d.Ctime) >= firstTO {
+				logx.Printf("gfep: idle kick conn=%d remote=%s reason=no_first_frame within %v",
+					c.ConnID, d.RemoteTCP, firstTO)
+				go c.Stop()
+				return
+			}
+
+			if idleTO > 0 && !d.Ltime.IsZero() {
+				ref := d.Rtime
+				if ref.IsZero() {
+					ref = d.Ltime
+				}
+				if now.Sub(ref) >= idleTO {
+					logx.Printf("gfep: idle kick conn=%d remote=%s reason=no_rx after login within %v",
+						c.ConnID, d.RemoteTCP, idleTO)
+					go c.Stop()
+				}
+			}
+		})
+	}
+}
+
 func (s *Server) allocConnID() uint32 {
 	for {
 		id := s.nextConnID.Add(1)

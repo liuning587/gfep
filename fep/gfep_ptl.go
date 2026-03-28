@@ -140,6 +140,8 @@ func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rDat
 		conn.NeedStop()
 		return
 	}
+	now := time.Now()
+	ensureSessionLtimeIfUnset(conn, now)
 	setRoutingStatus(conn, p.connA)
 	logPktLine(p.log, "APP", "FEP", appRxCat(p, rData), conn.GetConnID(), rData)
 
