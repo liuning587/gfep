@@ -1,58 +1,119 @@
 package main
 
 import (
+	"bytes"
+	"encoding/hex"
+	"flag"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 	"time"
+
+	"gfep/zptl"
 )
 
-var wg sync.WaitGroup
-
-var crc16CcittTable = []uint16{
-	0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
-	0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
-	0x1081, 0x0108, 0x3393, 0x221a, 0x56a5, 0x472c, 0x75b7, 0x643e,
-	0x9cc9, 0x8d40, 0xbfdb, 0xae52, 0xdaed, 0xcb64, 0xf9ff, 0xe876,
-	0x2102, 0x308b, 0x0210, 0x1399, 0x6726, 0x76af, 0x4434, 0x55bd,
-	0xad4a, 0xbcc3, 0x8e58, 0x9fd1, 0xeb6e, 0xfae7, 0xc87c, 0xd9f5,
-	0x3183, 0x200a, 0x1291, 0x0318, 0x77a7, 0x662e, 0x54b5, 0x453c,
-	0xbdcb, 0xac42, 0x9ed9, 0x8f50, 0xfbef, 0xea66, 0xd8fd, 0xc974,
-	0x4204, 0x538d, 0x6116, 0x709f, 0x0420, 0x15a9, 0x2732, 0x36bb,
-	0xce4c, 0xdfc5, 0xed5e, 0xfcd7, 0x8868, 0x99e1, 0xab7a, 0xbaf3,
-	0x5285, 0x430c, 0x7197, 0x601e, 0x14a1, 0x0528, 0x37b3, 0x263a,
-	0xdecd, 0xcf44, 0xfddf, 0xec56, 0x98e9, 0x8960, 0xbbfb, 0xaa72,
-	0x6306, 0x728f, 0x4014, 0x519d, 0x2522, 0x34ab, 0x0630, 0x17b9,
-	0xef4e, 0xfec7, 0xcc5c, 0xddd5, 0xa96a, 0xb8e3, 0x8a78, 0x9bf1,
-	0x7387, 0x620e, 0x5095, 0x411c, 0x35a3, 0x242a, 0x16b1, 0x0738,
-	0xffcf, 0xee46, 0xdcdd, 0xcd54, 0xb9eb, 0xa862, 0x9af9, 0x8b70,
-	0x8408, 0x9581, 0xa71a, 0xb693, 0xc22c, 0xd3a5, 0xe13e, 0xf0b7,
-	0x0840, 0x19c9, 0x2b52, 0x3adb, 0x4e64, 0x5fed, 0x6d76, 0x7cff,
-	0x9489, 0x8500, 0xb79b, 0xa612, 0xd2ad, 0xc324, 0xf1bf, 0xe036,
-	0x18c1, 0x0948, 0x3bd3, 0x2a5a, 0x5ee5, 0x4f6c, 0x7df7, 0x6c7e,
-	0xa50a, 0xb483, 0x8618, 0x9791, 0xe32e, 0xf2a7, 0xc03c, 0xd1b5,
-	0x2942, 0x38cb, 0x0a50, 0x1bd9, 0x6f66, 0x7eef, 0x4c74, 0x5dfd,
-	0xb58b, 0xa402, 0x9699, 0x8710, 0xf3af, 0xe226, 0xd0bd, 0xc134,
-	0x39c3, 0x284a, 0x1ad1, 0x0b58, 0x7fe7, 0x6e6e, 0x5cf5, 0x4d7c,
-	0xc60c, 0xd785, 0xe51e, 0xf497, 0x8028, 0x91a1, 0xa33a, 0xb2b3,
-	0x4a44, 0x5bcd, 0x6956, 0x78df, 0x0c60, 0x1de9, 0x2f72, 0x3efb,
-	0xd68d, 0xc704, 0xf59f, 0xe416, 0x90a9, 0x8120, 0xb3bb, 0xa232,
-	0x5ac5, 0x4b4c, 0x79d7, 0x685e, 0x1ce1, 0x0d68, 0x3ff3, 0x2e7a,
-	0xe70e, 0xf687, 0xc41c, 0xd595, 0xa12a, 0xb0a3, 0x8238, 0x93b1,
-	0x6b46, 0x7acf, 0x4854, 0x59dd, 0x2d62, 0x3ceb, 0x0e70, 0x1ff9,
-	0xf78f, 0xe606, 0xd49d, 0xc514, 0xb1ab, 0xa022, 0x92b9, 0x8330,
-	0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78,
+// 主站下行抄读电压（示例）；地址域为 0x05 + 6 字节通信地址，其后为固定 APDU 前缀。
+var voltageReadMark = []byte{
+	0x52, 0xE0, 0xD7, 0x05, 0x01, 0x3F, 0x20, 0x00, 0x02, 0x00, 0x00,
 }
 
-// crc16Calculate crc16 calculate
-func crc16Calculate(data []byte) uint16 {
-	var fcs uint16 = 0xffff
+// 终端上行应答模板（总长 38，L=0x24）；仅地址与 CRC 需按实际终端重写。
+var voltageRespTpl = []byte{
+	0x68, 0x24, 0x00, 0xC3, 0x05, 0x27, 0x03, 0x00, 0x00, 0x00, 0x26,
+	0x52, 0x4B, 0x7E, 0x85, 0x01, 0x3F, 0x20, 0x00, 0x02, 0x00, 0x01, 0x01, 0x03,
+	0x12, 0x08, 0x9C, 0x12, 0x08, 0x98, 0x12, 0x08, 0x99, 0x00, 0x00,
+	0x15, 0x6E, 0x16,
+}
 
-	for _, v := range data {
-		fcs = (fcs >> 8) ^ crc16CcittTable[uint8(uint16(v)^fcs)]
+// 常见主站/工具在 0x4F 后连续 AA（16/24 等）再跟 11 字节固定前缀（与规范「52+HCS+8 字节用户数据」并列存在）。
+var timeBroadcastWireMark = []byte{
+	0x52, 0xDA, 0x7D, 0x05, 0x01, 0x01, 0x40, 0x00, 0x02, 0x00, 0x00,
+}
+
+// 规范 L=0x21：紧跟 52 之后为 2 字节 HCS，再 8 字节用户数据。
+var timeBroadcastStrictUser = []byte{0xDA, 0x7D, 0x05, 0x01, 0x01, 0x40, 0x00, 0x02}
+
+// 广播读时钟应答模板（总长 35，L=0x21）；仅将 [5:11] 换为本终端通信地址并重算 HCS/FCS。
+var timeReadRespTpl = []byte{
+	0x68, 0x21, 0x00, 0xC3, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00, 0x94,
+	0x52, 0x62, 0x4B, 0x85, 0x01, 0x01, 0x40, 0x00, 0x02, 0x00, 0x01,
+	0x1C, 0x07, 0xEB, 0x04, 0x0B, 0x07, 0x11, 0x10, 0x00, 0x00,
+	0x3B, 0x43, 0x16,
+}
+
+func parseAddr(s string) ([]byte, error) {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
 	}
-	fcs ^= 0xffff
-	return fcs
+	if len(b) != 6 {
+		return nil, fmt.Errorf("need 12 hex chars (6 bytes), got %d bytes", len(b))
+	}
+	return b, nil
+}
+
+func addrForInstance(base []byte, cNo int, unique bool) []byte {
+	a := make([]byte, 6)
+	copy(a, base)
+	if unique {
+		a[4] = byte((cNo >> 8) & 0xff)
+		a[5] = byte(cNo & 0xff)
+	}
+	return a
+}
+
+func recalc698CRCs(frame []byte) error {
+	if len(frame) < 12 {
+		return fmt.Errorf("frame too short")
+	}
+	fLen := int(frame[1]) | int(frame[2]&0x3f)<<8
+	if frame[2]&0x40 != 0 {
+		return fmt.Errorf("extended length not supported")
+	}
+	if len(frame) < fLen+2 {
+		return fmt.Errorf("buffer shorter than L+2")
+	}
+	hlen := 6 + int(frame[4]&0x0f) + 1
+	if hlen+2 > len(frame) {
+		return fmt.Errorf("bad hlen")
+	}
+	cs := zptl.Crc16Calculate(frame[1:hlen])
+	frame[hlen] = byte(cs)
+	frame[hlen+1] = byte(cs >> 8)
+	cs = zptl.Crc16Calculate(frame[1 : fLen-1])
+	frame[fLen-1] = byte(cs)
+	frame[fLen] = byte(cs >> 8)
+	return nil
+}
+
+// buildLoginFrame 与原先 32 字节登录结构一致，仅将通信地址写入 [5:11)。
+func buildLoginFrame(addr []byte) ([]byte, error) {
+	if len(addr) != 6 {
+		return nil, fmt.Errorf("addr len %d", len(addr))
+	}
+	sbuf := make([]byte, 32)
+	sbuf[0] = 0x68
+	sbuf[1] = 0x1E
+	sbuf[2] = 0x00
+	sbuf[3] = 0x81
+	sbuf[4] = 0x05
+	copy(sbuf[5:11], addr)
+	sbuf[11] = 0x00
+	cs := zptl.Crc16Calculate(sbuf[1:12])
+	sbuf[12] = byte(cs)
+	sbuf[13] = byte(cs >> 8)
+	sbuf[14] = 0x01
+	sbuf[15] = 0x00
+	sbuf[16] = 0x00
+	sbuf[17] = 0x00
+	sbuf[18] = 0x3C
+	getDataTime(sbuf[19:29])
+	cs = zptl.Crc16Calculate(sbuf[1:29])
+	sbuf[29] = byte(cs)
+	sbuf[30] = byte(cs >> 8)
+	sbuf[31] = 0x16
+	return sbuf, nil
 }
 
 func getDataTime(buf []byte) {
@@ -66,100 +127,213 @@ func getDataTime(buf []byte) {
 	buf[5] = byte(t.Hour())
 	buf[6] = byte(t.Minute())
 	buf[7] = byte(t.Second())
-	millisecond := t.Nanosecond() / 1e6
-	buf[8] = byte(millisecond >> 8)
-	buf[9] = byte(millisecond)
+	ms := t.Nanosecond() / 1e6
+	buf[8] = byte(ms >> 8)
+	buf[9] = byte(ms)
 }
 
-func send(c net.Conn, cNo int) {
-	sbuf := make([]byte, 32)
-	sbuf[0] = 0x68
-	sbuf[1] = 0x1E
-	sbuf[2] = 0x00
-	sbuf[3] = 0x81
-	sbuf[4] = 0x05
-	sbuf[5] = 0x15
-	sbuf[6] = 0x61
-	sbuf[7] = byte((cNo >> 24) & 0xff)
-	sbuf[8] = byte((cNo >> 16) & 0xff)
-	sbuf[9] = byte((cNo >> 8) & 0xff)
-	sbuf[10] = byte((cNo >> 0) & 0xff)
-	sbuf[11] = 0x00
-	crc := crc16Calculate(sbuf[1:12])
-	sbuf[12] = byte((crc >> 0) & 0xff)
-	sbuf[13] = byte((crc >> 8) & 0xff)
-	sbuf[14] = 0x01
-	sbuf[15] = 0x00
-	sbuf[16] = 0x00
-	sbuf[17] = 0x00
-	sbuf[18] = 0x3C
-	getDataTime(sbuf[19:])
-	crc = crc16Calculate(sbuf[1:29])
-	sbuf[29] = byte((crc >> 0) & 0xff)
-	sbuf[30] = byte((crc >> 8) & 0xff)
-	sbuf[31] = 0x16
-
-	// 发送若干帧后关闭连接，便于自动化联调退出（原为无限循环）
-	const maxFrames = 5
-	for n := 0; n < maxFrames; n++ {
-		cnt, err := c.Write([]byte(sbuf))
-		if err != nil {
-			fmt.Printf("客户端发送数据失败 %d, %s\n", cNo, err)
-			_ = c.Close()
-			wg.Done()
-			return
-		}
-		fmt.Printf("客户端发送: %d, %d, % X\n", cNo, cnt, sbuf[:cnt])
-		time.Sleep(1 * time.Second)
+func isVoltageReadRequest(frame, commAddr []byte) bool {
+	if len(commAddr) != 6 || len(frame) < 11+len(voltageReadMark) {
+		return false
 	}
-	_ = c.Close()
-	wg.Done()
+	if zptl.Ptl698_45GetDir(frame) != 0 {
+		return false
+	}
+	if frame[4] != 0x05 {
+		return false
+	}
+	if !bytes.Equal(frame[5:11], commAddr) {
+		return false
+	}
+	return bytes.Equal(frame[11:11+len(voltageReadMark)], voltageReadMark)
 }
 
-func rece(c net.Conn, cNo int) {
+// broadcastTimeReadTotalLen 从 buf[0] 起识别「广播读时钟」并返回整帧字节数；不校验 HCS/FCS。
+func broadcastTimeReadTotalLen(buf []byte) int {
+	minNeed := 5 + 1 + 2 + len(timeBroadcastStrictUser) + 2 + 1
+	if len(buf) < minNeed {
+		return 0
+	}
+	if buf[0] != 0x68 || buf[1] != 0x21 || buf[2] != 0x00 || buf[3] != 0x43 || buf[4] != 0x4F {
+		return 0
+	}
+	if zptl.Ptl698_45GetDir(buf) != 0 {
+		return 0
+	}
+	p := 5
+	for p < len(buf) && buf[p] == 0xAA {
+		p++
+	}
+	if p == 5 {
+		return 0
+	}
+	// A) 工具常见：AA 后直接 11 字节 wireMark + FCS + 16（总长随 AA 个数变，如 43 字节）
+	if p+len(timeBroadcastWireMark)+2+1 <= len(buf) &&
+		bytes.Equal(buf[p:p+len(timeBroadcastWireMark)], timeBroadcastWireMark) &&
+		buf[p+len(timeBroadcastWireMark)+2] == 0x16 {
+		return p + len(timeBroadcastWireMark) + 2 + 1
+	}
+	// B) 规范布局：52 + HCS(2) + 8 字节用户数据 + FCS(2) + 16（总长 5 + nAA + 14）
+	if p+1+2+len(timeBroadcastStrictUser)+2+1 <= len(buf) &&
+		buf[p] == 0x52 &&
+		bytes.Equal(buf[p+3:p+3+len(timeBroadcastStrictUser)], timeBroadcastStrictUser) &&
+		buf[p+1+2+len(timeBroadcastStrictUser)+2] == 0x16 {
+		return p + 1 + 2 + len(timeBroadcastStrictUser) + 2 + 1
+	}
+	return 0
+}
 
-	//接收缓存
-	rbuf := make([]byte, 1024)
+func isBroadcastTimeReadLayout(frame []byte) bool {
+	want := broadcastTimeReadTotalLen(frame)
+	return want > 0 && want == len(frame)
+}
 
-	for {
-		//服务器端返回的数据写入空buf
-		cnt, err := c.Read(rbuf)
-		if err != nil {
-			fmt.Printf("客户端接收数据失败: %d, %s\n", cNo, err)
-			c.Close()
-			wg.Done()
+func buildVoltageResponse(commAddr []byte) ([]byte, error) {
+	out := make([]byte, len(voltageRespTpl))
+	copy(out, voltageRespTpl)
+	copy(out[5:11], commAddr)
+	if err := recalc698CRCs(out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func buildTimeBroadcastResponse(commAddr []byte) ([]byte, error) {
+	out := make([]byte, len(timeReadRespTpl))
+	copy(out, timeReadRespTpl)
+	copy(out[5:11], commAddr)
+	if err := recalc698CRCs(out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// drainProtocolFrames 先按 zptl 完整校验拆帧；对「广播读时钟」在 CRC 错误时仍按 35 字节结构拆出（与常见错误拼帧工具兼容）。
+func drainProtocolFrames(buf []byte, onFrame func([]byte)) []byte {
+	for len(buf) > 0 {
+		if buf[0] != 0x68 {
+			buf = buf[1:]
+			continue
+		}
+		n := zptl.Ptl698_45CompleteFrameLen(buf)
+		if n > 0 {
+			fl := int(n)
+			frame := append([]byte(nil), buf[:fl]...)
+			buf = buf[fl:]
+			onFrame(frame)
+			continue
+		}
+		bl := broadcastTimeReadTotalLen(buf)
+		if bl > 0 {
+			frame := append([]byte(nil), buf[:bl]...)
+			buf = buf[bl:]
+			onFrame(frame)
+			continue
+		}
+		if n == 0 {
 			break
 		}
-		fmt.Printf("服务器端回复: %d, %d, % X\n", cNo, cnt, rbuf[:cnt])
+		buf = buf[1:]
 	}
+	return buf
 }
 
-// ClientSocket 客户端连接
-func ClientSocket(count int) {
-	for i := 0; i < count; i++ {
-		go func(i int) {
-			time.Sleep(time.Duration(i*10000) * time.Microsecond)
-			conn, err := net.Dial("tcp", "127.0.0.1:20083")
-			if err != nil {
-				fmt.Println("客户端建立连接失败", i, err)
-				return
+func runTerminal(cNo int, server string, commAddr []byte, verbose bool) {
+	defer wg.Done()
+
+	conn, err := net.Dial("tcp", server)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dial %s #%d: %v\n", server, cNo, err)
+		return
+	}
+	defer conn.Close()
+
+	login, err := buildLoginFrame(commAddr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "login frame #%d: %v\n", cNo, err)
+		return
+	}
+	if _, err := conn.Write(login); err != nil {
+		fmt.Fprintf(os.Stderr, "login write #%d: %v\n", cNo, err)
+		return
+	}
+	if verbose {
+		fmt.Printf("[%d] login sent addr=% X % X\n", cNo, commAddr, login)
+	}
+
+	var buf []byte
+	tmp := make([]byte, 2048)
+	for {
+		n, err := conn.Read(tmp)
+		if err != nil {
+			if verbose {
+				fmt.Printf("[%d] read end: %v\n", cNo, err)
 			}
-			fmt.Println("客户端建立连接OK", i)
-
-			wg.Add(2)
-			go send(conn, i)
-			go rece(conn, i)
-		}(i)
+			return
+		}
+		buf = append(buf, tmp[:n]...)
+		buf = drainProtocolFrames(buf, func(frame []byte) {
+			if verbose {
+				fmt.Printf("[%d] rx frame % X\n", cNo, frame)
+			}
+			if isVoltageReadRequest(frame, commAddr) {
+				resp, err := buildVoltageResponse(commAddr)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[%d] voltage resp build: %v\n", cNo, err)
+					return
+				}
+				if _, err := conn.Write(resp); err != nil {
+					fmt.Fprintf(os.Stderr, "[%d] voltage resp write: %v\n", cNo, err)
+					return
+				}
+				if verbose {
+					fmt.Printf("[%d] voltage reply % X\n", cNo, resp)
+				}
+			} else if isBroadcastTimeReadLayout(frame) {
+				resp, err := buildTimeBroadcastResponse(commAddr)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[%d] broadcast time resp build: %v\n", cNo, err)
+					return
+				}
+				if _, err := conn.Write(resp); err != nil {
+					fmt.Fprintf(os.Stderr, "[%d] broadcast time resp write: %v\n", cNo, err)
+					return
+				}
+				if verbose {
+					fmt.Printf("[%d] broadcast time reply % X\n", cNo, resp)
+				}
+			}
+		})
+		if len(buf) > zptl.PmaxPtlFrameLen*4 {
+			buf = buf[len(buf)-zptl.PmaxPtlFrameLen*2:]
+		}
 	}
-	time.Sleep(300 * time.Millisecond)
-	wg.Wait()
 }
+
+var wg sync.WaitGroup
 
 func main() {
+	server := flag.String("server", "127.0.0.1:20083", "FEP address host:port")
+	nConn := flag.Int("n", 1, "concurrent simulated terminals")
+	addrHex := flag.String("addr", "270300000026", "6-byte comm addr as 12 hex chars")
+	unique := flag.Bool("unique", false, "vary last 2 addr bytes per instance (cNo) for scale-out sim")
+	verbose := flag.Bool("v", false, "verbose hex log")
+	flag.Parse()
 
-	fmt.Printf("698客户端测试\n")
+	baseAddr, err := parseAddr(*addrHex)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "gfep: -addr:", err)
+		os.Exit(1)
+	}
 
-	ClientSocket(2)
+	fmt.Printf("gfep gterminal: server=%s n=%d addr=%s unique=%v (698 voltage + broadcast time read)\n",
+		*server, *nConn, *addrHex, *unique)
 
-	// ClientSocket 内已 Wait，此处无需再次 Wait
+	for i := 0; i < *nConn; i++ {
+		cNo := i
+		comm := addrForInstance(baseAddr, cNo, *unique)
+		wg.Add(1)
+		go runTerminal(cNo, *server, comm, *verbose)
+	}
+	wg.Wait()
 }

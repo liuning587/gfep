@@ -128,7 +128,7 @@ gfep/
 ├── bridge/         # 698 桥接相关
 ├── timewriter/     # 按时间的日志写入
 ├── utils/          # 全局配置与工具
-├── test/           # 测试与辅助程序
+├── test/           # 测试与辅助程序（如 gterminal 698 模拟终端、stress 连接压测）
 ├── docs/           # 设计 / 规格文档
 ├── gfep.go         # 入口、路由注册、连接生命周期
 ├── gfep_ptl.go     # 各规约 profile 与业务路由
@@ -142,6 +142,7 @@ gfep/
 ## 文档
 
 - 需求规格（草案）：[MQTT 集成](docs/MQTT_SPEC.md) · [Web 日志下载](docs/WEB_SPEC.md) · [索引](docs/MQTT_WEB_SPEC.md)
+- 698 模拟终端（联调 / 轻量压测）：[test/gterminal/README.md](test/gterminal/README.md)
 
 ---
 

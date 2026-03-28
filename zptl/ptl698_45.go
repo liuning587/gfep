@@ -67,6 +67,11 @@ func ptl698_45IsValid(buf []byte) int32 {
 	return int32(fLen + 2)
 }
 
+// Ptl698_45CompleteFrameLen 若 buf 前缀为一帧完整 698 帧则返回整帧字节数（含 68 与尾 16），否则 0（数据不足）或 -1（非法前缀）。
+func Ptl698_45CompleteFrameLen(buf []byte) int32 {
+	return ptl698_45IsValid(buf)
+}
+
 //--------------------------------------------------------------------
 
 // Ptl698_45GetDir 获取报文传输方向,0:主站-->终端, 1:终端-->主站

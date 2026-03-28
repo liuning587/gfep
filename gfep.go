@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 	// _ "net/http/pprof"
 )
@@ -122,7 +123,7 @@ func DoConnectionLost(conn ziface.IConnection) {
 	}
 }
 
-const usrConnTimeFmt = "2006-01-02 15:04:05"
+const usrConnTimeFmt = "2006-01-02 15:04:05.000"
 
 func fmtUsrConnTime(t time.Time) string {
 	if t.IsZero() {
@@ -132,15 +133,25 @@ func fmtUsrConnTime(t time.Time) string {
 }
 
 // printOnlineConnDetail 打印单条在线连接（终端/后台列表用）。
-func printOnlineConnDetail(tag string, seq int, termAddr string, connID uint32) {
+// isApp：后台连接为 true，仅展示 MSA 与收发；终端为 false，另展示登录/心跳等（698 终端另展示上报 MSA=0）。
+func printOnlineConnDetail(tag string, seq int, addr string, connID uint32, isApp bool) {
+	const labelW = 14
+	line := func() { fmt.Println(strings.Repeat("-", 56)) }
+
+	addrLabel := "通信地址"
+	if isApp {
+		addrLabel = "主站 MSA"
+	}
+	show698Report := !isApp && strings.HasPrefix(tag, "698")
+
 	srv := utils.GlobalObject.TCPServer
 	if srv == nil {
-		fmt.Printf("%s [%d] connID=%d 终端地址=%s (TCP服务未就绪)\n", tag, seq, connID, termAddr)
+		fmt.Printf("%s #%d  conn=%d  %s=%s  (TCP 未就绪)\n", tag, seq, connID, addrLabel, addr)
 		return
 	}
 	ic, err := srv.GetConnMgr().Get(connID)
 	if err != nil {
-		fmt.Printf("%s [%d] connID=%d 终端地址=%s (连接不存在或已断开)\n", tag, seq, connID, termAddr)
+		fmt.Printf("%s #%d  conn=%d  %s=%s  (已断开)\n", tag, seq, connID, addrLabel, addr)
 		return
 	}
 	co, ok := ic.(*znet.Connection)
@@ -149,15 +160,32 @@ func printOnlineConnDetail(tag string, seq int, termAddr string, connID uint32) 
 		if ra := ic.RemoteAddr(); ra != nil {
 			peer = netaddr.FormatTCP(ra)
 		}
-		fmt.Printf("%s [%d] connID=%d 终端地址=%s 对端=%s (连接类型非*znet.Connection)\n", tag, seq, connID, termAddr, peer)
+		fmt.Printf("%s #%d  conn=%d  %s=%s  peer=%s  (非 *znet.Connection)\n", tag, seq, connID, addrLabel, addr, peer)
 		return
 	}
 	d := co.Details()
-	fmt.Printf("%s [%d] connID=%d 通信地址=%s 对端=%s\n", tag, seq, connID, termAddr, d.RemoteTCP)
-	fmt.Printf("    连接建立:%s 登录:%s 心跳:%s 最近收帧:%s 最近发送:%s 最近上报(MSA=0):%s\n",
-		fmtUsrConnTime(d.Ctime), fmtUsrConnTime(d.Ltime), fmtUsrConnTime(d.Htime),
-		fmtUsrConnTime(d.Rtime), fmtUsrConnTime(d.LastTxAt), fmtUsrConnTime(d.LastReportAt))
-	fmt.Printf("    收: %d 帧 %d 字节 | 发: %d 次 %d 字节\n", d.RxFrames, d.RxFrameBytes, d.TxWrites, d.TxWriteBytes)
+
+	line()
+	fmt.Printf(" %s  #%d\n", tag, seq)
+	fmt.Printf(" %-*s  %d\n", labelW, "连接 ID", connID)
+	fmt.Printf(" %-*s  %s\n", labelW, addrLabel, addr)
+	fmt.Printf(" %-*s  %s\n", labelW, "对端 TCP", d.RemoteTCP)
+	fmt.Println()
+	fmt.Printf(" %-*s  %s\n", labelW, "连接建立", fmtUsrConnTime(d.Ctime))
+	if !isApp {
+		fmt.Printf(" %-*s  %s\n", labelW, "登录", fmtUsrConnTime(d.Ltime))
+		fmt.Printf(" %-*s  %s\n", labelW, "心跳", fmtUsrConnTime(d.Htime))
+	}
+	fmt.Printf(" %-*s  %s\n", labelW, "最近收帧", fmtUsrConnTime(d.Rtime))
+	fmt.Printf(" %-*s  %s\n", labelW, "最近发送", fmtUsrConnTime(d.LastTxAt))
+	if show698Report {
+		fmt.Printf(" %-*s  %s\n", labelW, "上报 MSA=0", fmtUsrConnTime(d.LastReportAt))
+	}
+	fmt.Println()
+	fmt.Printf(" %-*s  收 %d 帧 / %d B    发 %d 次 / %d B\n",
+		labelW, "流量统计", d.RxFrames, d.RxFrameBytes, d.TxWrites, d.TxWriteBytes)
+	line()
+	fmt.Println()
 }
 
 func usrInput() {
@@ -182,29 +210,29 @@ func usrInput() {
 		case 1:
 			i := 0
 			for _, t := range regTmn376.snapshot() {
-				printOnlineConnDetail("376终端", i, t.addrStr, t.connID)
+				printOnlineConnDetail("376终端", i, t.addrStr, t.connID, false)
 				i++
 			}
 			for _, t := range regTmn698.snapshot() {
-				printOnlineConnDetail("698终端", i, t.addrStr, t.connID)
+				printOnlineConnDetail("698终端", i, t.addrStr, t.connID, false)
 				i++
 			}
 			for _, t := range regTmnNw.snapshot() {
-				printOnlineConnDetail("Nw终端", i, t.addrStr, t.connID)
+				printOnlineConnDetail("Nw终端", i, t.addrStr, t.connID, false)
 				i++
 			}
 		case 2:
 			i := 0
 			for _, a := range regApp376.snapshot() {
-				printOnlineConnDetail("376后台", i, a.addrStr, a.connID)
+				printOnlineConnDetail("376后台", i, a.addrStr, a.connID, true)
 				i++
 			}
 			for _, a := range regApp698.snapshot() {
-				printOnlineConnDetail("698后台", i, a.addrStr, a.connID)
+				printOnlineConnDetail("698后台", i, a.addrStr, a.connID, true)
 				i++
 			}
 			for _, a := range regAppNw.snapshot() {
-				printOnlineConnDetail("Nw后台", i, a.addrStr, a.connID)
+				printOnlineConnDetail("Nw后台", i, a.addrStr, a.connID, true)
 				i++
 			}
 		case 3:
