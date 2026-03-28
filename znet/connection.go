@@ -223,38 +223,38 @@ func (c *Connection) RemoteAddr() net.Addr {
 }
 
 // SendMsg 直接将Message数据发送数据给远程的TCP客户端
-func (c *Connection) SendMsg(data []byte) error {
+func (c *Connection) SendMsg(data []byte) (err error) {
 	if c.isClosed {
 		return errors.New("Connection closed when send msg")
 	}
 
 	defer func() {
-		if err := recover(); err != nil {
+		if recover() != nil {
+			err = errors.New("Connection closed when send msg")
 		}
 	}()
 
-	//写回客户端
 	c.msgChan <- data
-
 	return nil
 }
 
 // SendBuffMsg 直接将Message数据发送数据给远程的TCP客户端
-func (c *Connection) SendBuffMsg(data []byte) error {
-	if c.msgBuffChanIsClosed {
+func (c *Connection) SendBuffMsg(data []byte) (err error) {
+	c.propertyLock.RLock()
+	closed := c.msgBuffChanIsClosed
+	ch := c.msgBuffChan
+	c.propertyLock.RUnlock()
+	if closed || ch == nil {
 		return errors.New("Connection closed when send buff msg")
 	}
 
 	defer func() {
-		if err := recover(); err != nil {
+		if recover() != nil {
+			err = errors.New("Connection closed when send buff msg")
 		}
 	}()
 
-	//写回客户端, 高并发下有可能msgBuffChan被关闭
-	if c.msgBuffChan != nil {
-		c.msgBuffChan <- data
-	}
-
+	ch <- data
 	return nil
 }
 
@@ -345,6 +345,4 @@ func (c *Connection) RemoveProperty(key string) {
 	case "bridge":
 		c.binfo = nil
 	}
-	// delete(c.property, key)
-	c.status = 0
 }

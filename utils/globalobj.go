@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"gfep/ziface"
 	"gfep/zlog"
-	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -76,15 +76,17 @@ func (g *GlobalObj) Reload() {
 		return
 	}
 
-	data, err := ioutil.ReadFile(g.ConfFilePath)
+	data, err := os.ReadFile(g.ConfFilePath)
 	if err != nil {
-		panic(err)
+		log.Printf("gfep: read config %s: %v", g.ConfFilePath, err)
+		return
 	}
-	//将json数据解析到struct中
-	err = json.Unmarshal(data, g)
-	if err != nil {
-		panic(err)
+	loaded := *g
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		log.Printf("gfep: parse config %s: %v", g.ConfFilePath, err)
+		return
 	}
+	*g = loaded
 
 	//Logger 设置
 	if g.LogFile != "" {

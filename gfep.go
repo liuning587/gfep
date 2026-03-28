@@ -717,9 +717,14 @@ func DoConnectionBegin(conn ziface.IConnection) {
 
 // DoConnectionLost 连接断开的时候执行
 func DoConnectionLost(conn ziface.IConnection) {
-	connStatus, err := conn.GetProperty("status")
+	statusVal, err := conn.GetProperty("status")
+	connStatus := connIdle
 	if err != nil {
-		panic("connStatus != err")
+		log.Printf("gfep: DoConnectionLost: GetProperty(status) failed connID=%d: %v", conn.GetConnID(), err)
+	} else if s, ok := statusVal.(int); ok {
+		connStatus = s
+	} else {
+		log.Printf("gfep: DoConnectionLost: unexpected status type connID=%d: %T", conn.GetConnID(), statusVal)
 	}
 
 	switch connStatus {
@@ -908,7 +913,7 @@ func usrInput() {
 			}
 			appNwLock.RUnlock()
 		case 3:
-			fmt.Println("V0.0.1")
+			fmt.Println(utils.GlobalObject.Version)
 		case 4:
 			fmt.Println("功能未实现!")
 		case 5:
