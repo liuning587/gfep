@@ -25,7 +25,7 @@ const (
 	ONLINE         = 5
 )
 
-//常量
+// 常量
 const (
 	PmaxPtlFrameLen    = 2200       //最大报文长度
 	Pmax698PtlFrameLen = 256 * 1024 //最大报文长度(698物联版)
@@ -87,7 +87,7 @@ func IsValid(ptype uint32, data []byte) (int32, uint32) {
 	return ret, PTL_UNKNOW
 }
 
-//findFirstByte 获取指定协议报文首字节偏移
+// findFirstByte 获取指定协议报文首字节偏移
 func findFirstByte(ptype uint32, data []byte) int32 {
 	var i int32
 	var dlen = int32(len(data))
@@ -124,7 +124,7 @@ func findFirstByte(ptype uint32, data []byte) int32 {
 	return -1
 }
 
-//Check 从输入缓存中找出首条合法报文
+// Check 从输入缓存中找出首条合法报文
 func Check(ptype uint32, data []byte) (int32, int32, uint32) {
 	var pos int32 = 0
 	inlen := int32(len(data))

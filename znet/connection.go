@@ -12,6 +12,42 @@ import (
 	"time"
 )
 
+// buffPayload 异步写出：n 为待写切片；slab 非空表示来自 sendBuffPool，Write 后须归还。
+type buffPayload struct {
+	n    []byte
+	slab *[]byte
+}
+
+var sendBuffPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, zptl.PmaxPtlFrameLen)
+		return &b
+	},
+}
+
+func cloneToBuffPayload(data []byte) buffPayload {
+	if len(data) == 0 {
+		return buffPayload{}
+	}
+	if len(data) <= zptl.PmaxPtlFrameLen {
+		pslab := sendBuffPool.Get().(*[]byte)
+		slab := *pslab
+		copy(slab[:len(data)], data)
+		return buffPayload{n: slab[:len(data)], slab: pslab}
+	}
+	b := make([]byte, len(data))
+	copy(b, data)
+	return buffPayload{n: b, slab: nil}
+}
+
+func releaseBuffPayload(item buffPayload) {
+	if item.slab != nil {
+		slab := *item.slab
+		*item.slab = slab[:cap(slab)]
+		sendBuffPool.Put(item.slab)
+	}
+}
+
 // Connection connection
 type Connection struct {
 	//当前Conn属于哪个Server
@@ -28,9 +64,9 @@ type Connection struct {
 	//告知该链接已经退出/停止的channel
 	ExitBuffChan chan bool
 	//无缓冲管道，用于读、写两个goroutine之间的消息通信
-	msgChan chan []byte
+	msgChan chan buffPayload
 	//有缓冲管道，用于读、写两个goroutine之间的消息通信
-	msgBuffChan         chan []byte
+	msgBuffChan         chan buffPayload
 	msgBuffChanIsClosed bool
 
 	//链接属性
@@ -60,8 +96,8 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		needStop:            false,
 		MsgHandler:          msgHandler,
 		ExitBuffChan:        make(chan bool, 1),
-		msgChan:             make(chan []byte),
-		msgBuffChan:         make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		msgChan:             make(chan buffPayload),
+		msgBuffChan:         make(chan buffPayload, utils.GlobalObject.MaxMsgChanLen),
 		msgBuffChanIsClosed: false,
 		// property:     make(map[string]interface{}),
 		binfo: nil,
@@ -79,18 +115,19 @@ func (c *Connection) StartWriter() {
 
 	for {
 		select {
-		case data := <-c.msgChan:
-			//有数据要写给客户端
-			if _, err := c.Conn.Write(data); err != nil {
+		case item := <-c.msgChan:
+			_, err := c.Conn.Write(item.n)
+			releaseBuffPayload(item)
+			if err != nil {
 				_ = c.Conn.Close()
 				logx.Errorf("Send Data error: %v Conn Writer exit", err)
 				return
 			}
-			//fmt.Printf("Send data succ! data = %+v\n", data)
-		case data, ok := <-c.msgBuffChan:
+		case item, ok := <-c.msgBuffChan:
 			if ok {
-				//有数据要写给客户端
-				if _, err := c.Conn.Write(data); err != nil {
+				_, err := c.Conn.Write(item.n)
+				releaseBuffPayload(item)
+				if err != nil {
 					c.closeMsgBuffChan()
 					_ = c.Conn.Close()
 					logx.Errorf("Send Buff Data error: %v Conn Writer exit", err)
@@ -234,7 +271,7 @@ func (c *Connection) SendMsg(data []byte) (err error) {
 		}
 	}()
 
-	c.msgChan <- data
+	c.msgChan <- cloneToBuffPayload(data)
 	return nil
 }
 
@@ -254,10 +291,12 @@ func (c *Connection) SendBuffMsg(data []byte) (err error) {
 		}
 	}()
 
+	bp := cloneToBuffPayload(data)
 	select {
-	case ch <- data:
+	case ch <- bp:
 		return nil
 	default:
+		releaseBuffPayload(bp)
 		return errors.New("send buffer full")
 	}
 }

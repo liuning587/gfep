@@ -20,7 +20,7 @@ const (
 	LOG_MAX_BUF = 1024 * 1024
 )
 
-//日志头部信息标记位，采用bitmap方式，用户可以选择头部需要哪些标记位被打印
+// 日志头部信息标记位，采用bitmap方式，用户可以选择头部需要哪些标记位被打印
 const (
 	BitDate         = 1 << iota                            //日期标记位  2019/01/23
 	BitTime                                                //时间标记位  01:23:12
@@ -32,7 +32,7 @@ const (
 	BitDefault      = BitLevel | BitShortFile | BitStdFlag //默认日志头部格式
 )
 
-//日志级别
+// 日志级别
 const (
 	LogDebug = iota
 	LogInfo
@@ -42,7 +42,7 @@ const (
 	LogFatal
 )
 
-//日志级别对应的显示字符串
+// 日志级别对应的显示字符串
 var levels = []string{
 	"[DEBUG]",
 	"[INFO]",
@@ -72,10 +72,10 @@ type ZinxLogger struct {
 }
 
 /*
-	创建一个日志
-	out: 标准输出的文件io
-	prefix: 日志的前缀
-	flag: 当前日志头部信息的标记位
+创建一个日志
+out: 标准输出的文件io
+prefix: 日志的前缀
+flag: 当前日志头部信息的标记位
 */
 func NewZinxLog(out io.Writer, prefix string, flag int) *ZinxLogger {
 
@@ -87,14 +87,14 @@ func NewZinxLog(out io.Writer, prefix string, flag int) *ZinxLogger {
 }
 
 /*
-   回收日志处理
+回收日志处理
 */
 func CleanZinxLog(log *ZinxLogger) {
 	log.closeFile()
 }
 
 /*
-   制作当条日志数据的 格式头信息
+制作当条日志数据的 格式头信息
 */
 func (log *ZinxLogger) formatHeader(buf *bytes.Buffer, t time.Time, file string, line int, level int) {
 	//如果当前前缀字符串不为空，那么需要先写前缀
@@ -160,7 +160,7 @@ func (log *ZinxLogger) formatHeader(buf *bytes.Buffer, t time.Time, file string,
 }
 
 /*
-   输出日志文件,原方法
+输出日志文件,原方法
 */
 func (log *ZinxLogger) OutPut(level int, s string) error {
 
@@ -275,35 +275,35 @@ func (log *ZinxLogger) Stack(v ...interface{}) {
 	_ = log.OutPut(LogError, s)
 }
 
-//获取当前日志bitmap标记
+// 获取当前日志bitmap标记
 func (log *ZinxLogger) Flags() int {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	return log.flag
 }
 
-//重新设置日志Flags bitMap 标记位
+// 重新设置日志Flags bitMap 标记位
 func (log *ZinxLogger) ResetFlags(flag int) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	log.flag = flag
 }
 
-//添加flag标记
+// 添加flag标记
 func (log *ZinxLogger) AddFlag(flag int) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	log.flag |= flag
 }
 
-//设置日志的 用户自定义前缀字符串
+// 设置日志的 用户自定义前缀字符串
 func (log *ZinxLogger) SetPrefix(prefix string) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
 	log.prefix = prefix
 }
 
-//设置日志文件输出
+// 设置日志文件输出
 func (log *ZinxLogger) SetLogFile(fileDir string, fileName string) {
 	var file *os.File
 
@@ -328,7 +328,7 @@ func (log *ZinxLogger) SetLogFile(fileDir string, fileName string) {
 	log.out = file
 }
 
-//关闭日志绑定的文件
+// 关闭日志绑定的文件
 func (log *ZinxLogger) closeFile() {
 	if log.file != nil {
 		_ = log.file.Close()
@@ -347,7 +347,7 @@ func (log *ZinxLogger) OpenDebug() {
 
 // ================== 以下是一些工具方法 ==========
 
-//判断日志文件是否存在
+// 判断日志文件是否存在
 func (log *ZinxLogger) checkFileExist(filename string) bool {
 	exist := true
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
@@ -369,8 +369,8 @@ func mkdirLog(dir string) (e error) {
 	return
 }
 
-//将一个整形转换成一个固定长度的字符串，字符串宽度应该是大于0的
-//要确保buffer是有容量空间的
+// 将一个整形转换成一个固定长度的字符串，字符串宽度应该是大于0的
+// 要确保buffer是有容量空间的
 func itoa(buf *bytes.Buffer, i int, wid int) {
 	var u uint = uint(i)
 	if u == 0 && wid <= 1 {

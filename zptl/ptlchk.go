@@ -1,6 +1,6 @@
 package zptl
 
-//Chkfrm ptl check frame
+// Chkfrm ptl check frame
 type Chkfrm struct {
 	//超时时间ms
 	timeout int64
@@ -19,7 +19,7 @@ type Chkfrm struct {
 	buf []byte
 }
 
-//NewChkfrm 初始化报文检测的方法
+// NewChkfrm 初始化报文检测的方法
 func NewChkfrm(ptype uint32, timeout int64, f func(uint32, []byte, interface{}), arg interface{}) *Chkfrm {
 	//初始化chkfrm属性
 	p := &Chkfrm{
@@ -34,7 +34,7 @@ func NewChkfrm(ptype uint32, timeout int64, f func(uint32, []byte, interface{}),
 	return p
 }
 
-//Chkfrm 报文检测, 返回合法报文数量
+// Chkfrm 报文检测, 返回合法报文数量
 func (p *Chkfrm) Chkfrm(data []byte) int32 {
 	var cnt int32 = 0
 
@@ -94,7 +94,7 @@ func (p *Chkfrm) Chkfrm(data []byte) int32 {
 	return cnt
 }
 
-//Reset 复位
+// Reset 复位
 func (p *Chkfrm) Reset() {
 	// p.pos = 0
 	p.rtime = 0

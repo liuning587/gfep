@@ -58,7 +58,7 @@ func TestServer(t *testing.T) {
 }
 */
 
-//ping test 自定义路由
+// ping test 自定义路由
 type PingRouter struct {
 	BaseRouter
 }

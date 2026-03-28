@@ -6,7 +6,6 @@ import (
 	"gfep/znet"
 	"log"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -90,22 +89,9 @@ func preAddrForTmnLogin(c ziface.IConnection) string {
 	return s
 }
 
-var msaStrPool = sync.Pool{
-	New: func() interface{} {
-		b := make([]byte, 0, 24)
-		return &b
-	},
-}
-
-// msaString 将 MSA 整型格式化为十进制字符串（与 strconv.Itoa 一致），复用缓冲降低分配。
+// msaString 将 MSA 格式化为十进制字符串（小整数路径由编译器优化，避免与 sync.Pool 共享底层字节导致数据竞态）。
 func msaString(msa int) string {
-	p := msaStrPool.Get().(*[]byte)
-	b := *p
-	b = strconv.AppendInt(b[:0], int64(msa), 10)
-	s := string(b)
-	*p = b
-	msaStrPool.Put(p)
-	return s
+	return strconv.Itoa(msa)
 }
 
 func logPkt(lg *log.Logger, prefix string, data []byte) {

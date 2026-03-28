@@ -9,37 +9,37 @@ import "os"
 
 var StdZinxLog = NewZinxLog(os.Stderr, "", BitDefault)
 
-//获取StdZinxLog 标记位
+// 获取StdZinxLog 标记位
 func Flags() int {
 	return StdZinxLog.Flags()
 }
 
-//设置StdZinxLog标记位
+// 设置StdZinxLog标记位
 func ResetFlags(flag int) {
 	StdZinxLog.ResetFlags(flag)
 }
 
-//添加flag标记
+// 添加flag标记
 func AddFlag(flag int) {
 	StdZinxLog.AddFlag(flag)
 }
 
-//设置StdZinxLog 日志头前缀
+// 设置StdZinxLog 日志头前缀
 func SetPrefix(prefix string) {
 	StdZinxLog.SetPrefix(prefix)
 }
 
-//设置StdZinxLog绑定的日志文件
+// 设置StdZinxLog绑定的日志文件
 func SetLogFile(fileDir string, fileName string) {
 	StdZinxLog.SetLogFile(fileDir, fileName)
 }
 
-//设置关闭debug
+// 设置关闭debug
 func CloseDebug() {
 	StdZinxLog.CloseDebug()
 }
 
-//设置打开debug
+// 设置打开debug
 func OpenDebug() {
 	StdZinxLog.OpenDebug()
 }

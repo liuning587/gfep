@@ -40,7 +40,7 @@ var crc16CcittTable = []uint16{
 	0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78,
 }
 
-//Crc16Calculate crc16 calculate
+// Crc16Calculate crc16 calculate
 func Crc16Calculate(data []byte) uint16 {
 	var fcs uint16 = 0xffff
 
@@ -51,7 +51,7 @@ func Crc16Calculate(data []byte) uint16 {
 	return fcs
 }
 
-//Crc16Update crc16 update
+// Crc16Update crc16 update
 func Crc16Update(fcs uint16, data []byte) uint16 {
 	for _, v := range data {
 		fcs = (fcs >> 8) ^ crc16CcittTable[uint8(uint16(v)^fcs)]
@@ -59,7 +59,7 @@ func Crc16Update(fcs uint16, data []byte) uint16 {
 	return fcs
 }
 
-//GetCs get cs sum
+// GetCs get cs sum
 func GetCs(data []byte) uint8 {
 	var cs uint8 = 0
 
@@ -69,7 +69,7 @@ func GetCs(data []byte) uint8 {
 	return cs
 }
 
-//GetCrc16 get crc16
+// GetCrc16 get crc16
 func GetCrc16(data []byte, crc uint16) uint16 {
 	for _, v := range data {
 		crc ^= uint16(v) << 8
@@ -83,7 +83,7 @@ func GetCrc16(data []byte, crc uint16) uint16 {
 	return crc
 }
 
-//MemEqual memequal
+// MemEqual memequal
 func MemEqual(data []byte, c uint8) bool {
 	for _, v := range data {
 		if v != c {
@@ -93,12 +93,12 @@ func MemEqual(data []byte, c uint8) bool {
 	return true
 }
 
-//MemMatch xxx
+// MemMatch xxx
 func MemMatch() {
 
 }
 
-//Hex2Str bytes to hex string
+// Hex2Str bytes to hex string
 func Hex2Str(data []byte) string {
 	str := make([]byte, len(data)*2)
 
@@ -116,7 +116,7 @@ func Hex2Str(data []byte) string {
 	return string(str)
 }
 
-//Str2hex str to bytes
+// Str2hex str to bytes
 func Str2hex(txt string) []byte {
 	var pos int
 	var str []byte
@@ -142,7 +142,7 @@ func Str2hex(txt string) []byte {
 	return str
 }
 
-//IsPrint is print
+// IsPrint is print
 func IsPrint(c uint8) bool {
 	if (c >= 32) && (c <= 126) {
 		return true
@@ -150,7 +150,7 @@ func IsPrint(c uint8) bool {
 	return false
 }
 
-//PrintBuf printbuf
+// PrintBuf printbuf
 func PrintBuf(offset uint32, data []byte) {
 	var lineBytes uint8
 	var cnt uint8
@@ -201,7 +201,7 @@ func PrintBuf(offset uint32, data []byte) {
 	}
 }
 
-//PrintBuffer printbuffer
+// PrintBuffer printbuffer
 func PrintBuffer(format string, data []byte) {
 	if len(format) != 0 {
 		fmt.Print(format)

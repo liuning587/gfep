@@ -194,9 +194,9 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 			}
 		}
 
-		reply := make([]byte, 128)
-		plen := p.buildReply(rData, reply)
-		if err := conn.SendBuffMsg(reply[0:plen]); err != nil {
+		var reply [128]byte
+		plen := p.buildReply(rData, reply[:])
+		if err := conn.SendBuffMsg(reply[:plen]); err != nil {
 			if p.log != nil {
 				p.log.Println(err)
 			}
@@ -224,9 +224,9 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 						p.log.Println("终端心跳", tmnStr)
 					}
 					setHtime(conn, time.Now())
-					reply := make([]byte, 128)
-					plen := p.buildReply(rData, reply)
-					if err := conn.SendBuffMsg(reply[0:plen]); err != nil {
+					var reply [128]byte
+					plen := p.buildReply(rData, reply[:])
+					if err := conn.SendBuffMsg(reply[:plen]); err != nil {
 						if p.log != nil {
 							p.log.Println(err)
 						}
@@ -254,9 +254,9 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 			if p.log != nil {
 				p.log.Println("终端退出", tmnStr)
 			}
-			reply := make([]byte, 128)
-			plen := p.buildReply(rData, reply)
-			if err := conn.SendMsg(reply[0:plen]); err != nil && p.log != nil {
+			var reply [128]byte
+			plen := p.buildReply(rData, reply[:])
+			if err := conn.SendMsg(reply[:plen]); err != nil && p.log != nil {
 				p.log.Println(err)
 			}
 		}
@@ -268,9 +268,9 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 	}
 
 	if p.extras698 && utils.GlobalObject.SupportReplyReport && p.isReport != nil && p.buildReportAck != nil && p.isReport(rData) {
-		reply := make([]byte, 512)
-		plen := p.buildReportAck(rData, reply)
-		if err := conn.SendBuffMsg(reply[0:plen]); err != nil {
+		var reply [512]byte
+		plen := p.buildReportAck(rData, reply[:])
+		if err := conn.SendBuffMsg(reply[:plen]); err != nil {
 			if p.log != nil {
 				p.log.Println(err)
 			}
