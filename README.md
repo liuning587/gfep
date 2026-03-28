@@ -26,7 +26,7 @@
 - **698 桥接**：可选 `BridgeHost698` 与终端侧 698 通道配合（见配置项说明）。
 - **异步转发池**：可配置 `ForwardWorkers`、`ForwardQueueLen`，用于高并发下的下行转发。
 - **分模块滚动日志**：376 / 698 / NW 分文件输出，支持按目录归档（见 `timewriter`）。
-- **可选交互菜单**：非 Linux 环境下可在控制台查看在线列表、版本等（见 `gfep.go` 中 `usrInput`）。
+- **可选交互菜单**：非 Linux 环境下可在控制台查看在线列表、版本等（见 `fep/app.go` 中 `usrInput`）。
 
 ---
 
@@ -130,10 +130,8 @@ gfep/
 ├── utils/          # 全局配置与工具
 ├── test/           # 测试与辅助程序（如 gterminal 698 模拟终端、stress 连接压测）
 ├── docs/           # 设计 / 规格文档
-├── gfep.go         # 入口、路由注册、连接生命周期
-├── gfep_ptl.go     # 各规约 profile 与业务路由
-├── registry.go     # 终端 / 应用注册表
-├── forward.go      # 转发池
+├── fep/            # 前置机业务包：入口逻辑、规约 profile、注册表、转发池等
+├── gfep.go         # 程序入口（调用 `fep.Main()`）
 └── go.mod
 ```
 

@@ -1,6 +1,12 @@
-package main
+package fep
 
 import "sync"
+
+// addrConnID 在线列表快照项（终端地址或主站 MSA 与 connID）。
+type addrConnID struct {
+	addrStr string
+	connID  uint32
+}
 
 // appRegistry 后台(MSA)索引：按 connID / 按 MSA 双向映射，用于 O(1) 量级转发。
 type appRegistry struct {

@@ -1,4 +1,4 @@
-package main
+package fep
 
 import (
 	"gfep/utils"
