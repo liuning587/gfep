@@ -81,6 +81,7 @@ func ClientSocket() {
 	for i := 0; i < 10000; i++ {
 		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			time.Sleep(time.Duration(i*10000) * time.Microsecond)
 			conn, err := net.Dial("tcp", "127.0.0.1:20083")
 			if err != nil {
@@ -100,10 +101,6 @@ func ClientSocket() {
 }
 
 func main() {
-
 	fmt.Printf("客户端测试\n")
-
 	ClientSocket()
-
-	wg.Wait()
 }

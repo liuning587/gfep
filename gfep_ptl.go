@@ -158,7 +158,9 @@ func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rDat
 
 	targets := p.regTmn.forwardTargetsAppToTmn(tmnStr, p.broadcast(tmnStr))
 	for _, id := range targets {
-		logPktLine(p.log, "FEP", "DCU", logCatFwd, id, rData)
+		if utils.GlobalObject.LogForwardEgressHex {
+			logPktLine(p.log, "FEP", "DCU", logCatFwd, id, rData)
+		}
 		submitForward(conn, id, rData)
 	}
 }
@@ -311,7 +313,9 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 	targets := p.regApp.forwardTargets(msaStr)
 	isMatch := len(targets) > 0
 	for _, id := range targets {
-		logPktLine(p.log, "FEP", "APP", logCatFwd, id, rData)
+		if utils.GlobalObject.LogForwardEgressHex {
+			logPktLine(p.log, "FEP", "APP", logCatFwd, id, rData)
+		}
 		submitForward(conn, id, rData)
 	}
 

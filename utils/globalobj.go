@@ -47,6 +47,8 @@ type GlobalObj struct {
 	LogConnTrace  bool   //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
 	LogNetVerbose bool   //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
 	LogPacketHex  bool   //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
+	// LogForwardEgressHex 为 true 时，异步转发再各打一行 [FEP->DCU]/[FEP->APP]（与入站 FORWARD 帧相同 hex，默认 false 避免一轮请求打四条）
+	LogForwardEgressHex bool
 
 	/*
 		Fep
@@ -116,29 +118,30 @@ func init() {
 	}
 	//初始化GlobalObject变量，设置一些默认值
 	GlobalObject = &GlobalObj{
-		Name:             "gfep",
-		Version:          "V0.2",
-		TCPPort:          20083,
-		Host:             "0.0.0.0",
-		TCPNetwork:       "tcp",
-		BridgeHost698:    "", //0.0.0.0:0
-		MaxConn:          50000,
-		MaxPacketSize:    2200,
-		ConfFilePath:     pwd + "/conf/gfep.json",
-		WorkerPoolSize:   256,
-		MaxWorkerTaskLen: 1024,
-		MaxMsgChanLen:    8,
-		LogDir:           pwd + "/log",
-		LogFile:          "",
-		LogWebEnabled:    false,
-		LogWebHost:       "0.0.0.0",
-		LogWebPort:       20084,
-		LogDebugClose:    false,
-		LogConnTrace:     false,
-		LogNetVerbose:    false,
-		LogPacketHex:     false,
-		ForwardWorkers:   32,
-		ForwardQueueLen:  16384,
+		Name:                "gfep",
+		Version:             "V0.2",
+		TCPPort:             20083,
+		Host:                "0.0.0.0",
+		TCPNetwork:          "tcp",
+		BridgeHost698:       "", //0.0.0.0:0
+		MaxConn:             50000,
+		MaxPacketSize:       2200,
+		ConfFilePath:        pwd + "/conf/gfep.json",
+		WorkerPoolSize:      256,
+		MaxWorkerTaskLen:    1024,
+		MaxMsgChanLen:       8,
+		LogDir:              pwd + "/log",
+		LogFile:             "",
+		LogWebEnabled:       false,
+		LogWebHost:          "0.0.0.0",
+		LogWebPort:          20084,
+		LogDebugClose:       false,
+		LogConnTrace:        false,
+		LogNetVerbose:       false,
+		LogPacketHex:        false,
+		LogForwardEgressHex: false,
+		ForwardWorkers:      32,
+		ForwardQueueLen:     16384,
 
 		Timeout:             30,
 		SupportCompress:     false,
