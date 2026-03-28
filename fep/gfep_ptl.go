@@ -148,9 +148,7 @@ func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rDat
 	isNewApp := p.regApp.registerOrUpdate(conn.GetConnID(), msaStr)
 	if isNewApp {
 		setRoutingAddr(conn, msaStr)
-		if p.log != nil {
-			p.log.Printf("[APP->FEP][%s] app registered MSA=%s conn=%d\n", logCatLink, msaStr, conn.GetConnID())
-		}
+		linkLayerLogf(p.log, "[APP->FEP][%s] app registered MSA=%s conn=%d\n", logCatLink, msaStr, conn.GetConnID())
 	}
 
 	if p.getFrameType(rData) == zptl.ONLINE {
@@ -190,17 +188,13 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 		if preAddr != tmnStr {
 			isNewTmn, evicted, resetBridgeCur := p.regTmn.Login(conn.GetConnID(), tmnStr, utils.GlobalObject.SupportCommTermianl, utils.GlobalObject.SupportCasLink)
 			for _, id := range evicted {
-				if p.log != nil {
-					p.log.Printf("[DCU->FEP][%s] duplicate terminal login addr=%s evict conn=%d\n", logCatLink, tmnStr, id)
-				}
+				linkLayerLogf(p.log, "[DCU->FEP][%s] duplicate terminal login addr=%s evict conn=%d\n", logCatLink, tmnStr, id)
 				if p.extras698 {
 					stopBridgeForConnID(utils.GlobalObject.TCPServer, id)
 				}
 			}
 			if resetBridgeCur {
-				if p.log != nil {
-					p.log.Printf("[DCU->FEP][%s] login addr changed addr=%s reset bridge conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-				}
+				linkLayerLogf(p.log, "[DCU->FEP][%s] login addr changed addr=%s reset bridge conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 				if p.extras698 {
 					stopBridgeForConnID(utils.GlobalObject.TCPServer, conn.GetConnID())
 				}
@@ -209,65 +203,45 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 				if p.extras698 {
 					p.tryStartBridge698(conn, rData)
 				}
-				if p.log != nil {
-					p.log.Printf("[DCU->FEP][%s] terminal login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-				}
+				linkLayerLogf(p.log, "[DCU->FEP][%s] terminal login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 			} else {
-				if p.log != nil {
-					p.log.Printf("[DCU->FEP][%s] terminal re-login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-				}
+				linkLayerLogf(p.log, "[DCU->FEP][%s] terminal re-login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 			}
 		} else {
-			if p.log != nil {
-				p.log.Printf("[DCU->FEP][%s] terminal re-login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-			}
+			linkLayerLogf(p.log, "[DCU->FEP][%s] terminal re-login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 		}
 
 		var reply [128]byte
 		plen := p.buildReply(rData, reply[:])
 		if err := conn.SendBuffMsg(reply[:plen]); err != nil {
-			if p.log != nil {
-				p.log.Printf("[FEP->DCU][%s] login reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
-			}
+			linkLayerLogf(p.log, "[FEP->DCU][%s] login reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
 		} else {
 			setLtime(conn, time.Now())
 			setRoutingAddr(conn, tmnStr)
-			if p.log != nil {
-				logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
-			}
+			logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
 		}
 		return
 
 	case zptl.LINK_HAERTBEAT:
 		if utils.GlobalObject.SupportReplyHeart {
 			if connStatus != p.connT {
-				if p.log != nil {
-					p.log.Printf("[DCU->FEP][%s] heartbeat before login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-				}
+				linkLayerLogf(p.log, "[DCU->FEP][%s] heartbeat before login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 				conn.NeedStop()
 			} else {
 				preAddr := preAddrForTmnLogin(conn)
 				if preAddr == tmnStr {
 					// todo: 级联心跳时判断级联地址是否存在
-					if p.log != nil {
-						p.log.Printf("[DCU->FEP][%s] heartbeat addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-					}
+					linkLayerLogf(p.log, "[DCU->FEP][%s] heartbeat addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 					setHtime(conn, time.Now())
 					var reply [128]byte
 					plen := p.buildReply(rData, reply[:])
 					if err := conn.SendBuffMsg(reply[:plen]); err != nil {
-						if p.log != nil {
-							p.log.Printf("[FEP->DCU][%s] heartbeat reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
-						}
+						linkLayerLogf(p.log, "[FEP->DCU][%s] heartbeat reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
 					} else {
-						if p.log != nil {
-							logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
-						}
+						logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
 					}
 				} else {
-					if p.log != nil {
-						p.log.Printf("[DCU->FEP][%s] heartbeat addr mismatch registered=%s frame=%s conn=%d\n", logCatLink, preAddr, tmnStr, conn.GetConnID())
-					}
+					linkLayerLogf(p.log, "[DCU->FEP][%s] heartbeat addr mismatch registered=%s frame=%s conn=%d\n", logCatLink, preAddr, tmnStr, conn.GetConnID())
 					conn.NeedStop()
 				}
 			}
@@ -276,20 +250,14 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 
 	case zptl.LINK_EXIT:
 		if connStatus != p.connT {
-			if p.log != nil {
-				p.log.Printf("[DCU->FEP][%s] logout before login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-			}
+			linkLayerLogf(p.log, "[DCU->FEP][%s] logout before login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 		} else {
-			if p.log != nil {
-				p.log.Printf("[DCU->FEP][%s] terminal logout addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
-			}
+			linkLayerLogf(p.log, "[DCU->FEP][%s] terminal logout addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 			var reply [128]byte
 			plen := p.buildReply(rData, reply[:])
 			if err := conn.SendMsg(reply[:plen]); err != nil {
-				if p.log != nil {
-					p.log.Printf("[FEP->DCU][%s] logout reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
-				}
-			} else if p.log != nil && plen > 0 {
+				linkLayerLogf(p.log, "[FEP->DCU][%s] logout reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
+			} else if plen > 0 {
 				logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
 			}
 		}

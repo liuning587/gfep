@@ -77,6 +77,7 @@ go build -o gfep .
 | `LogConnTrace` | 是否打印连接 Accept/Add/Remove 等跟踪（高并发建议关闭） |
 | `LogNetVerbose` | 是否打印 Worker 启动、路由注册、`msgBuffChan` 关闭等框架详细日志（默认关闭） |
 | `LogPacketHex` | 是否对报文打十六进制日志（高 QPS 建议关闭） |
+| `LogLinkLayer` | 是否打印链路层（LINK：登录/心跳/登出/Online）相关文本与对应 hex；`false` 时仍打印 FORWARD/REPORT 等（默认 `true`） |
 | `Timeout` | TCP 超时（分钟） |
 | `SupportCompress` / `SupportCas` / `SupportCasLink` | 南网相关：压缩、级联、级联终端登录与心跳 |
 | `SupportCommTermianl` | 是否允许终端重复登录等行为 |
@@ -109,7 +110,7 @@ go build -ldflags "-s -w" -o gfep .
 ## 运行与运维
 
 - **日志**：默认写入 `LogDir` 下按规约区分的滚动日志（如 `376`、`698`、`nw` 模块名）。业务路径统一经 `internal/logx` 输出到 stderr（前缀 `gfep:`），与 `zlog` 文件日志并存时请按运维策略分流与留存。
-- **性能**：生产环境建议关闭 `LogConnTrace`、`LogNetVerbose`、`LogPacketHex`，并按并发调整 `WorkerPoolSize` 与转发池参数。
+- **性能**：生产环境建议关闭 `LogConnTrace`、`LogNetVerbose`、`LogPacketHex`，或保留 `LogPacketHex` 仅排障转发时配合关闭 `LogLinkLayer`，并按并发调整 `WorkerPoolSize` 与转发池参数。
 - **敏感与合规**：`LogPacketHex` 与桥接侧详细日志会输出报文十六进制，仅应在排障时由授权人员短时开启，并注意日志留存与脱敏策略。
 - **转发队列**：队列满时会丢弃任务并打 `[WARN]`；累计丢弃次数在 expvar `gfep_forward_queue_drops`（若进程暴露 `/debug/vars` 可查看）。
 - **版本号**：当前内置版本字符串见 `utils.GlobalObject.Version`（如 `V0.2`）。

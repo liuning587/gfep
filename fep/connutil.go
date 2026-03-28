@@ -129,6 +129,9 @@ func logPktLine(lg *log.Logger, from, to, cat string, connID uint32, data []byte
 	if lg == nil || !utils.GlobalObject.LogPacketHex {
 		return
 	}
+	if cat == logCatLink && !utils.GlobalObject.LogLinkLayer {
+		return
+	}
 	if len(data) == 0 {
 		lg.Printf("[%s->%s][%s] conn=%d (empty)\n", from, to, cat, connID)
 		return
@@ -138,4 +141,12 @@ func logPktLine(lg *log.Logger, from, to, cat string, connID uint32, data []byte
 	} else {
 		lg.Printf("[%s->%s][%s] %X\n", from, to, cat, data)
 	}
+}
+
+// linkLayerLogf 打印链路层（LINK）文本日志；LogLinkLayer 为 false 时忽略。
+func linkLayerLogf(lg *log.Logger, format string, args ...any) {
+	if lg == nil || !utils.GlobalObject.LogLinkLayer {
+		return
+	}
+	lg.Printf(format, args...)
 }

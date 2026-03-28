@@ -9,6 +9,7 @@
   "LogConnTrace": false,
   "LogNetVerbose": false,
   "LogPacketHex": true,
+  "LogLinkLayer": true,
   "LogForwardEgressHex": false,
   "ForwardWorkers": 32,
   "ForwardQueueLen": 16384,

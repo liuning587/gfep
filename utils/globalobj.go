@@ -47,6 +47,8 @@ type GlobalObj struct {
 	LogConnTrace  bool   //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
 	LogNetVerbose bool   //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
 	LogPacketHex  bool   //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
+	// LogLinkLayer 为 false 时不打印链路层相关日志（分类 LINK：登录/心跳/登出/Online 及对应 hex）；不影响 FORWARD/REPORT 等
+	LogLinkLayer bool
 	// LogForwardEgressHex 为 true 时，异步转发再各打一行 [FEP->DCU]/[FEP->APP]（与入站 FORWARD 帧相同 hex，默认 false 避免一轮请求打四条）
 	LogForwardEgressHex bool
 
@@ -110,6 +112,9 @@ func (g *GlobalObj) Reload() {
 	if _, ok := raw["PostLoginRxIdleMinutes"]; !ok {
 		loaded.PostLoginRxIdleMinutes = g.PostLoginRxIdleMinutes
 	}
+	if _, ok := raw["LogLinkLayer"]; !ok {
+		loaded.LogLinkLayer = g.LogLinkLayer
+	}
 	*g = loaded
 
 	//Logger 设置
@@ -152,6 +157,7 @@ func init() {
 		LogConnTrace:        false,
 		LogNetVerbose:       false,
 		LogPacketHex:        false,
+		LogLinkLayer:        true,
 		LogForwardEgressHex: false,
 		ForwardWorkers:      32,
 		ForwardQueueLen:     16384,
