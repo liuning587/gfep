@@ -258,7 +258,7 @@ func runTerminal(cNo int, server string, commAddr []byte, verbose bool) {
 		return
 	}
 	if verbose {
-		fmt.Printf("[%d] login sent addr=% X % X\n", cNo, commAddr, login)
+		fmt.Printf("[%d] login sent addr=% X %X\n", cNo, commAddr, login)
 	}
 
 	var buf []byte
@@ -274,7 +274,7 @@ func runTerminal(cNo int, server string, commAddr []byte, verbose bool) {
 		buf = append(buf, tmp[:n]...)
 		buf = drainProtocolFrames(buf, func(frame []byte) {
 			if verbose {
-				fmt.Printf("[%d] rx frame % X\n", cNo, frame)
+				fmt.Printf("[%d] rx frame %X\n", cNo, frame)
 			}
 			if isVoltageReadRequest(frame, commAddr) {
 				resp, err := buildVoltageResponse(commAddr)
@@ -287,7 +287,7 @@ func runTerminal(cNo int, server string, commAddr []byte, verbose bool) {
 					return
 				}
 				if verbose {
-					fmt.Printf("[%d] voltage reply % X\n", cNo, resp)
+					fmt.Printf("[%d] voltage reply %X\n", cNo, resp)
 				}
 			} else if isBroadcastTimeReadLayout(frame) {
 				resp, err := buildTimeBroadcastResponse(commAddr)
@@ -300,7 +300,7 @@ func runTerminal(cNo int, server string, commAddr []byte, verbose bool) {
 					return
 				}
 				if verbose {
-					fmt.Printf("[%d] broadcast time reply % X\n", cNo, resp)
+					fmt.Printf("[%d] broadcast time reply %X\n", cNo, resp)
 				}
 			}
 		})

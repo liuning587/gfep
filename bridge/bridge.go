@@ -106,7 +106,7 @@ func (c *Conn) sleepInterruptible(d time.Duration) bool {
 // Send 发送报文
 func (c *Conn) Send(buf []byte) error {
 	if connStatus(c.status.Load()) != loginOK {
-		logBridge.Printf("BT(NotLOGIN): % X\n", buf)
+		logBridge.Printf("BT(NotLOGIN): %X\n", buf)
 		return errors.New("not login ok")
 	}
 
@@ -115,16 +115,16 @@ func (c *Conn) Send(buf []byte) error {
 	c.mu.Unlock()
 
 	if nc == nil {
-		logBridge.Printf("BT(LOST): % X\n", buf)
+		logBridge.Printf("BT(LOST): %X\n", buf)
 		return nil
 	}
 	_, err := nc.Write(buf)
 	if err != nil {
-		logBridge.Printf("BT(ERR): % X\n", buf)
+		logBridge.Printf("BT(ERR): %X\n", buf)
 		c.disConnectServer()
 		return err
 	}
-	logBridge.Printf("BT: % X\n", buf)
+	logBridge.Printf("BT: %X\n", buf)
 	return nil
 }
 
@@ -197,10 +197,10 @@ func (c *Conn) login() error {
 		}
 		_, err := nc.Write(p)
 		if err != nil {
-			logBridge.Printf("BL(ERR): % X\n", p)
+			logBridge.Printf("BL(ERR): %X\n", p)
 			return err
 		}
-		logBridge.Printf("BL: % X\n", p)
+		logBridge.Printf("BL: %X\n", p)
 	}
 
 	timer := time.NewTimer(5 * time.Second)
@@ -250,10 +250,10 @@ func (c *Conn) heartbeat() error {
 	if len(p) > 0 {
 		_, err := nc.Write(p)
 		if err != nil {
-			logBridge.Printf("BH(ERR): % X\n", p)
+			logBridge.Printf("BH(ERR): %X\n", p)
 			return err
 		}
-		logBridge.Printf("BH: % X\n", p)
+		logBridge.Printf("BH: %X\n", p)
 	}
 	return nil
 }
@@ -304,7 +304,7 @@ func (c *Conn) logout() {
 		logBridge.Printf("logout write: %v\n", werr)
 		return
 	}
-	logBridge.Printf("Blogout: % X\n", p)
+	logBridge.Printf("Blogout: %X\n", p)
 }
 
 func (c *Conn) signalLoginAck() {
@@ -342,7 +342,7 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 	if !ok {
 		return
 	}
-	logBridge.Printf("BR: % X\n", data)
+	logBridge.Printf("BR: %X\n", data)
 	if c.packetType(ptype, data) == 1 {
 		switch connStatus(c.status.Load()) {
 		case loginOK:

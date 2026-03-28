@@ -8,7 +8,7 @@ import (
 )
 
 func sendMsgHandler(buf []byte) {
-	fmt.Printf("rx form app: % X\n", buf)
+	fmt.Printf("rx form app: %X\n", buf)
 }
 
 func Test698_tm(t *testing.T) {
