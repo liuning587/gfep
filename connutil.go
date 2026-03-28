@@ -103,9 +103,23 @@ func msaString(msa int) string {
 	return strconv.Itoa(msa)
 }
 
-func logPkt(lg *log.Logger, prefix string, data []byte) {
+// 报文日志业务分类（日志行格式 [FROM->TO][CAT]；中文说明见各常量注释）。
+const (
+	logCatLink   = "LINK"       // login / heartbeat / logout / Online
+	logCatFwd    = "FORWARD"    // master read, terminal response, passthrough
+	logCatReport = "REPORT"     // terminal-initiated report
+	logCatRptAck = "REPORT_ACK" // FEP report acknowledgment
+)
+
+// logPktLine 在 LogPacketHex 打开时打印一行：方向 + 分类 + 相关 conn + hex。
+// from/to 建议使用 DCU、FEP、APP、BRG；connID 为与本端相关的连接号。
+func logPktLine(lg *log.Logger, from, to, cat string, connID uint32, data []byte) {
 	if lg == nil || !utils.GlobalObject.LogPacketHex {
 		return
 	}
-	lg.Printf("%s: % X\n", prefix, data)
+	if len(data) == 0 {
+		lg.Printf("[%s->%s][%s] conn=%d (empty)\n", from, to, cat, connID)
+		return
+	}
+	lg.Printf("[%s->%s][%s] conn=%d % X\n", from, to, cat, connID, data)
 }

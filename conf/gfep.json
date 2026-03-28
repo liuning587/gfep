@@ -8,7 +8,7 @@
   "WorkerPoolSize":256,
   "LogConnTrace": false,
   "LogNetVerbose": false,
-  "LogPacketHex": false,
+  "LogPacketHex": true,
   "ForwardWorkers": 32,
   "ForwardQueueLen": 16384,
   "LogDir": "./log",

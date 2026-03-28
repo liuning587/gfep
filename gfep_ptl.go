@@ -36,6 +36,25 @@ type ptlProfile struct {
 
 var profile376, profile698, profileNw ptlProfile
 
+func terminalRxCat(p *ptlProfile, rData []byte) string {
+	switch p.getFrameType(rData) {
+	case zptl.LINK_LOGIN, zptl.LINK_EXIT, zptl.LINK_HAERTBEAT:
+		return logCatLink
+	default:
+		if p.isReport != nil && p.isReport(rData) {
+			return logCatReport
+		}
+		return logCatFwd
+	}
+}
+
+func appRxCat(p *ptlProfile, rData []byte) string {
+	if p.getFrameType(rData) == zptl.ONLINE {
+		return logCatLink
+	}
+	return logCatFwd
+}
+
 func initPtlProfiles() {
 	profile376 = ptlProfile{
 		ptype:        zptl.PTL_1376_1,
@@ -122,13 +141,13 @@ func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rDat
 		return
 	}
 	setRoutingStatus(conn, p.connA)
-	logPkt(p.log, "A", rData)
+	logPktLine(p.log, "APP", "FEP", appRxCat(p, rData), conn.GetConnID(), rData)
 
 	isNewApp := p.regApp.registerOrUpdate(conn.GetConnID(), msaStr)
 	if isNewApp {
 		setRoutingAddr(conn, msaStr)
 		if p.log != nil {
-			p.log.Println("后台登录", msaStr, "connID", conn.GetConnID())
+			p.log.Printf("[APP->FEP][%s] app registered MSA=%s conn=%d\n", logCatLink, msaStr, conn.GetConnID())
 		}
 	}
 
@@ -139,6 +158,7 @@ func (p *ptlProfile) handleFromApp(conn ziface.IConnection, connStatus int, rDat
 
 	targets := p.regTmn.forwardTargetsAppToTmn(tmnStr, p.broadcast(tmnStr))
 	for _, id := range targets {
+		logPktLine(p.log, "FEP", "DCU", logCatFwd, id, rData)
 		submitForward(conn, id, rData)
 	}
 }
@@ -149,7 +169,7 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 		return
 	}
 	setRoutingStatus(conn, p.connT)
-	logPkt(p.log, "T", rData)
+	logPktLine(p.log, "DCU", "FEP", terminalRxCat(p, rData), conn.GetConnID(), rData)
 
 	// 698 上报且报文中主站 MSA=0（与 forward 桥接语义一致）
 	if p.isReport != nil && p.isReport(rData) && p.msaGet(rData) == 0 {
@@ -167,7 +187,7 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 			isNewTmn, evicted, resetBridgeCur := p.regTmn.Login(conn.GetConnID(), tmnStr, utils.GlobalObject.SupportCommTermianl, utils.GlobalObject.SupportCasLink)
 			for _, id := range evicted {
 				if p.log != nil {
-					p.log.Println("终端重复登录", tmnStr, "删除", id)
+					p.log.Printf("[DCU->FEP][%s] duplicate terminal login addr=%s evict conn=%d\n", logCatLink, tmnStr, id)
 				}
 				if p.extras698 {
 					stopBridgeForConnID(utils.GlobalObject.TCPServer, id)
@@ -175,7 +195,7 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 			}
 			if resetBridgeCur {
 				if p.log != nil {
-					p.log.Println("终端登录地址发生变更", tmnStr, "删除", conn.GetConnID())
+					p.log.Printf("[DCU->FEP][%s] login addr changed addr=%s reset bridge conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 				}
 				if p.extras698 {
 					stopBridgeForConnID(utils.GlobalObject.TCPServer, conn.GetConnID())
@@ -186,16 +206,16 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 					p.tryStartBridge698(conn, rData)
 				}
 				if p.log != nil {
-					p.log.Println("终端登录", tmnStr, "connID", conn.GetConnID())
+					p.log.Printf("[DCU->FEP][%s] terminal login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 				}
 			} else {
 				if p.log != nil {
-					p.log.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
+					p.log.Printf("[DCU->FEP][%s] terminal re-login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 				}
 			}
 		} else {
 			if p.log != nil {
-				p.log.Println("终端重新登录", tmnStr, "connID", conn.GetConnID())
+				p.log.Printf("[DCU->FEP][%s] terminal re-login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 			}
 		}
 
@@ -203,13 +223,13 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 		plen := p.buildReply(rData, reply[:])
 		if err := conn.SendBuffMsg(reply[:plen]); err != nil {
 			if p.log != nil {
-				p.log.Println(err)
+				p.log.Printf("[FEP->DCU][%s] login reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
 			}
 		} else {
 			setLtime(conn, time.Now())
 			setRoutingAddr(conn, tmnStr)
 			if p.log != nil {
-				p.log.Printf("L: % X\n", reply[0:plen])
+				logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
 			}
 		}
 		return
@@ -218,7 +238,7 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 		if utils.GlobalObject.SupportReplyHeart {
 			if connStatus != p.connT {
 				if p.log != nil {
-					p.log.Println("终端未登录就发心跳", tmnStr)
+					p.log.Printf("[DCU->FEP][%s] heartbeat before login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 				}
 				conn.NeedStop()
 			} else {
@@ -226,23 +246,23 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 				if preAddr == tmnStr {
 					// todo: 级联心跳时判断级联地址是否存在
 					if p.log != nil {
-						p.log.Println("终端心跳", tmnStr)
+						p.log.Printf("[DCU->FEP][%s] heartbeat addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 					}
 					setHtime(conn, time.Now())
 					var reply [128]byte
 					plen := p.buildReply(rData, reply[:])
 					if err := conn.SendBuffMsg(reply[:plen]); err != nil {
 						if p.log != nil {
-							p.log.Println(err)
+							p.log.Printf("[FEP->DCU][%s] heartbeat reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
 						}
 					} else {
 						if p.log != nil {
-							p.log.Printf("H: % X", reply[0:plen])
+							logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
 						}
 					}
 				} else {
 					if p.log != nil {
-						p.log.Println("终端登录地址与心跳地址不匹配!", preAddr, tmnStr)
+						p.log.Printf("[DCU->FEP][%s] heartbeat addr mismatch registered=%s frame=%s conn=%d\n", logCatLink, preAddr, tmnStr, conn.GetConnID())
 					}
 					conn.NeedStop()
 				}
@@ -253,16 +273,20 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 	case zptl.LINK_EXIT:
 		if connStatus != p.connT {
 			if p.log != nil {
-				p.log.Println("终端未登录就想退出", tmnStr)
+				p.log.Printf("[DCU->FEP][%s] logout before login addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 			}
 		} else {
 			if p.log != nil {
-				p.log.Println("终端退出", tmnStr)
+				p.log.Printf("[DCU->FEP][%s] terminal logout addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
 			}
 			var reply [128]byte
 			plen := p.buildReply(rData, reply[:])
-			if err := conn.SendMsg(reply[:plen]); err != nil && p.log != nil {
-				p.log.Println(err)
+			if err := conn.SendMsg(reply[:plen]); err != nil {
+				if p.log != nil {
+					p.log.Printf("[FEP->DCU][%s] logout reply send failed conn=%d: %v\n", logCatLink, conn.GetConnID(), err)
+				}
+			} else if p.log != nil && plen > 0 {
+				logPktLine(p.log, "FEP", "DCU", logCatLink, conn.GetConnID(), reply[:plen])
 			}
 		}
 		conn.NeedStop()
@@ -277,16 +301,17 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 		plen := p.buildReportAck(rData, reply[:])
 		if err := conn.SendBuffMsg(reply[:plen]); err != nil {
 			if p.log != nil {
-				p.log.Println(err)
+				p.log.Printf("[FEP->DCU][%s] report ack send failed conn=%d: %v\n", logCatRptAck, conn.GetConnID(), err)
 			}
-		} else if p.log != nil {
-			p.log.Printf("K: % X", reply[0:plen])
+		} else if p.log != nil && plen > 0 {
+			logPktLine(p.log, "FEP", "DCU", logCatRptAck, conn.GetConnID(), reply[:plen])
 		}
 	}
 
 	targets := p.regApp.forwardTargets(msaStr)
 	isMatch := len(targets) > 0
 	for _, id := range targets {
+		logPktLine(p.log, "FEP", "APP", logCatFwd, id, rData)
 		submitForward(conn, id, rData)
 	}
 
@@ -314,15 +339,15 @@ func (p *ptlProfile) tryStartBridge698(conn ziface.IConnection, rData []byte) {
 	b := bridge.NewConn(host, tsa[1:], zptl.PTL_698_45, time.Minute, func(data []byte) {
 		if err := conn.SendBuffMsg(data); err != nil {
 			if p.log != nil {
-				p.log.Println(err)
+				p.log.Printf("[FEP->DCU][%s] bridge downlink send failed conn=%d: %v\n", logCatFwd, conn.GetConnID(), err)
 			}
 		} else if p.log != nil {
-			p.log.Printf("B: % X\n", data)
+			logPktLine(p.log, "FEP", "DCU", logCatFwd, conn.GetConnID(), data)
 		}
 	})
 	b.Start()
 	conn.SetProperty("bridge", b)
 	if p.log != nil {
-		p.log.Printf("B: % X create!\n", tsa)
+		p.log.Printf("[FEP->BRG][%s] dial host=%s TSA=% X dcuConn=%d\n", logCatFwd, host, tsa, conn.GetConnID())
 	}
 }
