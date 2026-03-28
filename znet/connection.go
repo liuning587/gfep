@@ -9,6 +9,7 @@ import (
 	"gfep/zptl"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -56,9 +57,10 @@ type Connection struct {
 	Conn *net.TCPConn
 	//当前连接的ID 也可以称作为SessionID，ID全局唯一
 	ConnID uint32
-	//当前连接的关闭状态
-	isClosed bool
-	needStop bool
+	// stopped 为 true 表示 Stop 已执行（幂等）。
+	stopped atomic.Bool
+	// needStop 为 true 表示业务要求结束读循环。
+	needStop atomic.Bool
 	//消息管理MsgId和对应处理方法的消息管理模块
 	MsgHandler ziface.IMsgHandle
 	//告知该链接已经退出/停止的channel
@@ -92,8 +94,6 @@ func NewConntion(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHan
 		TCPServer:           server,
 		Conn:                conn,
 		ConnID:              connID,
-		isClosed:            false,
-		needStop:            false,
 		MsgHandler:          msgHandler,
 		ExitBuffChan:        make(chan bool, 1),
 		msgChan:             make(chan buffPayload),
@@ -146,19 +146,14 @@ func (c *Connection) StartWriter() {
 func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 	c, ok := arg.(*Connection)
 	if ok {
-		//得到当前客户端请求的Request数据
+		// data 指向 Chkfrm 内部缓冲，异步 worker 可能晚于下一帧解析执行，必须拷贝。
+		payload := make([]byte, len(data))
+		copy(payload, data)
 		req := Request{
 			conn: c,
-			msg:  NewMsgPackage(ptype, data),
+			msg:  NewMsgPackage(ptype, payload),
 		}
-
-		if utils.GlobalObject.WorkerPoolSize > 0 {
-			//已经启动工作池机制，将消息交给Worker处理
-			c.MsgHandler.SendMsgToTaskQueue(&req)
-		} else {
-			//从绑定好的消息和对应的处理方法中执行对应的Handle方法
-			go c.MsgHandler.DoMsgHandler(&req)
-		}
+		c.MsgHandler.SendMsgToTaskQueue(&req)
 	} else {
 		logx.Errorf("arg is not Connection")
 	}
@@ -178,7 +173,7 @@ func (c *Connection) StartReader() {
 			break
 		}
 		ptlChk.Chkfrm(rbuf[0:rlen])
-		if c.needStop {
+		if c.needStop.Load() {
 			break
 		}
 	}
@@ -205,43 +200,31 @@ func (c *Connection) closeMsgBuffChan() {
 	c.propertyLock.Unlock()
 }
 
-// Stop 停止连接，结束当前连接状态
+// Stop 停止连接，结束当前连接状态（幂等，可并发调用）。
 func (c *Connection) Stop() {
-	// fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
-	//如果当前链接已经关闭
-	if c.isClosed {
+	if !c.stopped.CompareAndSwap(false, true) {
 		return
 	}
-	c.isClosed = true
 
-	//如果用户注册了该链接的关闭回调业务，那么在此刻应该显示调用
 	c.TCPServer.CallOnConnStop(c)
 
-	// 关闭socket链接
 	_ = c.Conn.Close()
-	//关闭Writer
 	c.ExitBuffChan <- true
 
-	//将链接从连接管理器中删除
 	c.TCPServer.GetConnMgr().Remove(c)
 
-	//关闭该链接全部管道
 	close(c.ExitBuffChan)
 	c.closeMsgBuffChan()
-	// c.property = nil
 }
 
 // IsStop 是否停止连接
 func (c *Connection) IsStop() bool {
-	if c.needStop {
-		return true
-	}
-	return c.isClosed
+	return c.needStop.Load() || c.stopped.Load()
 }
 
 // NeedStop 需要停止连接
 func (c *Connection) NeedStop() {
-	c.needStop = true
+	c.needStop.Store(true)
 }
 
 // GetTCPConnection 从当前连接获取原始的socket TCPConn
@@ -261,7 +244,7 @@ func (c *Connection) RemoteAddr() net.Addr {
 
 // SendMsg 直接将Message数据发送数据给远程的TCP客户端
 func (c *Connection) SendMsg(data []byte) (err error) {
-	if c.isClosed {
+	if c.stopped.Load() {
 		return errors.New("Connection closed when send msg")
 	}
 

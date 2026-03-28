@@ -16,11 +16,14 @@ type MsgHandle struct {
 
 // NewMsgHandle new msg handle
 func NewMsgHandle() *MsgHandle {
+	ws := utils.GlobalObject.WorkerPoolSize
+	if ws < 1 {
+		ws = 1
+	}
 	return &MsgHandle{
 		Apis:           make(map[uint32]ziface.IRouter),
-		WorkerPoolSize: utils.GlobalObject.WorkerPoolSize,
-		//一个worker对应一个queue
-		TaskQueue: make([]chan ziface.IRequest, utils.GlobalObject.WorkerPoolSize),
+		WorkerPoolSize: ws,
+		TaskQueue:      make([]chan ziface.IRequest, ws),
 	}
 }
 
@@ -38,13 +41,20 @@ func (mh *MsgHandle) SendMsgToTaskQueue(request ziface.IRequest) {
 
 // DoMsgHandler 马上以非阻塞方式处理消息
 func (mh *MsgHandle) DoMsgHandler(request ziface.IRequest) {
+	if r, ok := request.(*Request); ok {
+		defer func() {
+			if m, ok := r.msg.(*Message); ok {
+				releaseMsg(m)
+			}
+		}()
+	}
+
 	handler, ok := mh.Apis[request.GetMsgID()]
 	if !ok {
 		logx.Warnf("api msgID=%d is not FOUND", request.GetMsgID())
 		return
 	}
 
-	//执行对应处理方法
 	handler.PreHandle(request)
 	handler.Handle(request)
 	handler.PostHandle(request)

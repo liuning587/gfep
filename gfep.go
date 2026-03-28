@@ -222,6 +222,7 @@ func main() {
 	logInit()
 	initPtlProfiles()
 	initForwardPool()
+	startLogWebIfEnabled()
 
 	//创建一个server句柄
 	s := znet.NewServer()
