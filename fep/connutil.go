@@ -133,5 +133,9 @@ func logPktLine(lg *log.Logger, from, to, cat string, connID uint32, data []byte
 		lg.Printf("[%s->%s][%s] conn=%d (empty)\n", from, to, cat, connID)
 		return
 	}
-	lg.Printf("[%s->%s][%s] conn=%d % X\n", from, to, cat, connID, data)
+	if utils.GlobalObject.LogForwardEgressHex {
+		lg.Printf("[%s->%s,%s,conn=%d] %X\n", from, to, cat, connID, data)
+	} else {
+		lg.Printf("[%s->%s][%s] %X\n", from, to, cat, data)
+	}
 }
