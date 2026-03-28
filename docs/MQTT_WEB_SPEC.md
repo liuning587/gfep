@@ -4,7 +4,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [MQTT_SPEC.md](./MQTT_SPEC.md) | MQTT 接入、Topic、JSON 载荷、协议可选 Topic、与主流 IoT 平台对照及 MQTT 侧 backlog |
+| [MQTT_SPEC.md](./MQTT_SPEC.md) | MQTT 接入、**Topic 首段 `v1/`**、集群、`frameHex` 透传、§13 示例、§12 平台对照、**§14 自检与优化清单** |
 | [WEB_SPEC.md](./WEB_SPEC.md) | 可选 Web 日志列举/下载、配置与安全实践对照 |
 
 **历史**：本文件曾为单文件合并草案；修订请以 **MQTT_SPEC.md** 与 **WEB_SPEC.md** 为准。
