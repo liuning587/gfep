@@ -79,8 +79,15 @@ func Ptl698_45GetDir(buf []byte) int {
 
 // Ptl698_45GetFrameType 获取报文类型
 func Ptl698_45GetFrameType(buf []byte) int {
+	if len(buf) < 4 {
+		return OTHER
+	}
 	if buf[3]&0x07 == 0x01 { //链路连接管理（登录，心跳，退出登录）
-		switch buf[7+buf[4]&0x0f+2+2] { //todo: check
+		idx := 7 + int(buf[4]&0x0f) + 2 + 2 // 与旧逻辑一致，最大 11+15=26
+		if idx >= len(buf) {
+			return OTHER
+		}
+		switch buf[idx] {
 		case 0:
 			return LINK_LOGIN
 		case 1:
@@ -241,8 +248,11 @@ func Ptl698_45BuildPacket(tp uint8, tsa []byte) []byte {
 // Ptl698_45IsReport 是否为上报报文
 // 68 3A 00 83 05 11 11 00 00 11 11 00 A5 31 88 02 1F 01 60 12 03 00 05 00 20 2A 02 00 00 60 40 02 00 00 60 41 02 00 00 60 42 02 00 01 50 01 02 00 01 20 04 02 01 01 00 00 00 52 F6 16
 func Ptl698_45IsReport(buf []byte) bool {
-	pos := 4 + buf[4]&0x0f + 2 + 3
-	if len(buf) < 18 {
+	if len(buf) < 4 {
+		return false
+	}
+	pos := int(4 + buf[4]&0x0f + 2 + 3)
+	if pos+1 >= len(buf) {
 		return false
 	}
 

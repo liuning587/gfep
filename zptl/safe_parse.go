@@ -2,7 +2,8 @@ package zptl
 
 // 进入业务 Handle 前最小长度（避免 Ptl*Get* 在未完整帧上越界）。
 // 698：Ptl698_45AddrGet / Ptl698_45MsaGet 在地址域低 4 位为 0x0f 时最大读到 buf[21]，故取 22。
-// 实际完整帧仍由 Chkfrm/IsValid 保证；此前取 32 会把合法短帧（如总长 25 字节的下行）在业务入口静默丢弃。
+// Ptl698_45GetFrameType（链路管理分支）与 Ptl698_45IsReport 在包内自带下标长度校验，短帧不会越界。
+// 若把此处提到 27 会误杀合法短下行（如总长 25）；完整帧仍由 Chkfrm/IsValid 保证。
 const (
 	MinHandlerParseLen1376 = 20
 	MinHandlerParseLen698  = 22
