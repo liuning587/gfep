@@ -94,7 +94,12 @@
     try {
       me = await api("/api/auth/me");
       userLabel.textContent = me.username + " (" + me.role + ")";
-      buildNav();
+      let showBridgeNav = false;
+      try {
+        const st = await api("/api/status");
+        showBridgeNav = st.bridge698Enabled === true;
+      } catch (_) {}
+      buildNav(showBridgeNav);
       return true;
     } catch {
       me = null;
@@ -103,16 +108,19 @@
     }
   }
 
-  function buildNav() {
+  /** @param {boolean} showBridgeNav 与后端一致：BridgeHost698 非空且首字符非 `0` 时为 true */
+  function buildNav(showBridgeNav) {
     const tabs = [
       { id: "overview", label: "总览" },
       { id: "terminals", label: "在线终端" },
       { id: "apps", label: "主站/APP" },
-      { id: "bridges", label: "698 桥接" },
       { id: "live", label: "实时日志" },
       { id: "files", label: "历史日志" },
       { id: "config", label: "配置" },
     ];
+    if (showBridgeNav) {
+      tabs.splice(3, 0, { id: "bridges", label: "698 桥接" });
+    }
     if (me && me.role === "admin") {
       tabs.push({ id: "users", label: "用户" });
       tabs.push({ id: "blacklist", label: "黑名单" });
@@ -669,7 +677,11 @@
         const nTermSum = sumProtoMap(byP);
         const nAppSum = sumProtoMap(byApp);
         const ovQuick =
-          '<p class="muted ov-quicklinks">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button> · <button type="button" class="linkish" data-go="bridges">698 桥接</button></p>';
+          '<p class="muted ov-quicklinks">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button>' +
+          (s.bridge698Enabled === true
+            ? ' · <button type="button" class="linkish" data-go="bridges">698 桥接</button>'
+            : "") +
+          "</p>";
         const secRun =
           '<section class="ov-section ov-section--hero" aria-label="运行概览">' +
           '<h3 class="section-title ov-section-focus">运行概览</h3>' +
@@ -1106,9 +1118,16 @@
   }
 
   async function viewApps() {
+    const st = await api("/api/status").catch(() => ({}));
+    const bridgeLine =
+      st.bridge698Enabled === true
+        ? " 698 终端至主站的<strong>独立 TCP</strong>见菜单 <strong>698 桥接</strong>。"
+        : "";
     content.innerHTML =
       '<div class="card"><h2>主站 / APP 连接</h2><p class="muted">' +
-      "上行 = 主站→FEP 帧数/字节，下行 = FEP→主站（与终端表视角相反）。698 终端桥接至主站的<strong>独立 TCP</strong>见菜单 <strong>698 桥接</strong>。</p>" +
+      "上行 = 主站→FEP 帧数/字节，下行 = FEP→主站（与终端表视角相反）。" +
+      bridgeLine +
+      "</p>" +
       '<div class="toolbar"><input type="search" id="aq" placeholder="MSA / IP 过滤" /><button class="primary" id="aref">刷新</button></div><div id="atable"></div></div>';
     const run = async () => {
       const q = $("#aq").value.trim();
