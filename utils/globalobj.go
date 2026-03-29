@@ -47,10 +47,10 @@ type GlobalObj struct {
 	LogWebSessionIdleMin int `json:"LogWebSessionIdleMin"`
 	// LogWebSessionCookie  非空时会话 Cookie 用此名；空则自动为 gfep_session_<LogWebPort>（端口<=0 时按 20084），同机多端口无需配
 	LogWebSessionCookie string `json:"LogWebSessionCookie"`
-	LogDebugClose        bool //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
-	LogConnTrace         bool //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
-	LogNetVerbose        bool //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
-	LogPacketHex         bool //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
+	LogDebugClose       bool   //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
+	LogConnTrace        bool   //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
+	LogNetVerbose       bool   //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
+	LogPacketHex        bool   //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
 	// LogLinkLayer 为 false 时不打印链路层相关日志（分类 LINK：登录/心跳/登出/Online 及对应 hex）；不影响 FORWARD/REPORT 等
 	LogLinkLayer bool
 	// LogForwardEgressHex 为 true 时，异步转发再各打一行 [FEP->DCU]/[FEP->APP]（与入站 FORWARD 帧相同 hex，默认 false 避免一轮请求打四条）
@@ -162,9 +162,9 @@ func init() {
 		LogFile:              "",
 		LogWebEnabled:        false,
 		LogWebHost:           "0.0.0.0",
-		LogWebPort:            20084,
-		LogWebSessionIdleMin:  0,
-		LogWebSessionCookie:   "",
+		LogWebPort:           20084,
+		LogWebSessionIdleMin: 0,
+		LogWebSessionCookie:  "",
 		LogDebugClose:        false,
 		LogConnTrace:         false,
 		LogNetVerbose:        false,
@@ -174,8 +174,8 @@ func init() {
 		ForwardWorkers:       32,
 		ForwardQueueLen:      16384,
 
-		FirstFrameTimeoutMin:   1,
-		PostLoginRxIdleMinutes: 10,
+		FirstFrameTimeoutMin:   5,
+		PostLoginRxIdleMinutes: 30,
 		Timeout:                30,
 		SupportCompress:        false,
 		SupportCas:             false,
