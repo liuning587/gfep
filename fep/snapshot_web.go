@@ -234,6 +234,7 @@ func terminalRowFromDetails(protocol string, d znet.ConnDetails) web.TerminalRow
 		RemoteTCP:        d.RemoteTCP,
 		Protocol:         protocol,
 		Addr:             d.TermAddr,
+		ConnTime:         web.FormatDisplayWebPtr(d.Ctime),
 		OnlineDuration:   formatOnlineSince(d.Ctime),
 		LoginTime:        web.FormatDisplayWebPtr(d.Ltime),
 		HeartbeatTime:    web.FormatDisplayWebPtr(d.Htime),

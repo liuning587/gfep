@@ -396,7 +396,8 @@ func (s *Server) handleTerminalKick(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if s.requireAuth(w, r) == nil {
+	sess := s.requireAdmin(w, r)
+	if sess == nil {
 		return
 	}
 	var body struct {
@@ -414,6 +415,7 @@ func (s *Server) handleTerminalKick(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
+	logx.Printf("web audit: terminal kick by %q connId=%d", sess.Username, body.ConnID)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

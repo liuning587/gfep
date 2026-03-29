@@ -40,7 +40,7 @@ type GlobalObj struct {
 	*/
 	LogDir        string //日志所在文件夹 默认"./log"
 	LogFile       string //日志文件名称   默认""  --如果没有设置日志文件，打印信息将打印至stderr
-	LogWebEnabled bool   //是否启用 HTTP 列举/下载 LogDir 下日志（默认关闭，勿对公网裸奔）
+	LogWebEnabled bool   //是否启用内嵌 Web 管理控制台（同端口 API + 日志列举/下载；默认关闭，勿对公网裸奔）
 	LogWebHost    string //日志 Web 监听 IP，空则 0.0.0.0；仅当 LogWebEnabled 时有效
 	LogWebPort    int    //日志 Web 监听端口，<=0 时用 20084；仅当 LogWebEnabled 时有效
 	// LogWebSessionIdleMin  Web 会话空闲超时（分钟），<=0 时默认 480（8h）
