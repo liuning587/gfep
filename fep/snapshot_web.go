@@ -3,8 +3,10 @@ package fep
 import (
 	"errors"
 	"fmt"
+	"gfep/bridge"
 	"gfep/utils"
 	"gfep/web"
+	"gfep/ziface"
 	"gfep/znet"
 	"os"
 	"path/filepath"
@@ -371,6 +373,72 @@ func fepWebTerminalRows(expand bool, protoFilter, query string) []web.TerminalRo
 		}
 		return *li > *lj
 	})
+	return out
+}
+
+func bridgeRowFromSnap(d znet.ConnDetails, s bridge.Snapshot) web.BridgeRow {
+	online := ""
+	if !s.TcpSince.IsZero() {
+		online = formatOnlineSince(s.TcpSince)
+	}
+	return web.BridgeRow{
+		TerminalConnID:    d.ConnID,
+		TerminalAddr:      d.TermAddr,
+		TerminalRemoteTCP: d.RemoteTCP,
+		BridgeHost:        s.Host,
+		AddrHex:           s.AddrHex,
+		Protocol:          s.ProtoLabel,
+		Status:            s.Status,
+		StatusText:        s.StatusZh,
+		TcpSince:          web.FormatDisplayWebPtr(s.TcpSince),
+		LoginTime:         web.FormatDisplayWebPtr(s.LoginTime),
+		HeartbeatTime:     web.FormatDisplayWebPtr(s.HeartTime),
+		LastRxTime:        web.FormatDisplayWebPtr(s.LastRx),
+		LastTxTime:        web.FormatDisplayWebPtr(s.LastTx),
+		OnlineDuration:    online,
+		RxPkts:            u64dec(s.RxPkts),
+		TxPkts:            u64dec(s.TxPkts),
+		RxBytes:           web.FormatBytesHuman(int64(s.RxBytes)),
+		TxBytes:           web.FormatBytesHuman(int64(s.TxBytes)),
+		HeartUnAck:        s.HeartUnAck,
+	}
+}
+
+// fepWebBridgeRows 遍历连接管理器，收集带 bridge.Conn 的终端连接。
+func fepWebBridgeRows(query string) []web.BridgeRow {
+	srv := utils.GlobalObject.TCPServer
+	if srv == nil {
+		return nil
+	}
+	q := strings.TrimSpace(query)
+	var out []web.BridgeRow
+	srv.GetConnMgr().Range(func(ic ziface.IConnection) {
+		co, ok := ic.(*znet.Connection)
+		if !ok {
+			return
+		}
+		b, err := co.GetProperty("bridge")
+		if err != nil || b == nil {
+			return
+		}
+		bc, ok := b.(*bridge.Conn)
+		if !ok {
+			return
+		}
+		row := bridgeRowFromSnap(co.Details(), bc.Snapshot())
+		if q != "" {
+			f := strings.ToLower(q)
+			if !strings.Contains(strings.ToLower(row.BridgeHost), f) &&
+				!strings.Contains(strings.ToLower(row.TerminalAddr), f) &&
+				!strings.Contains(strings.ToLower(row.TerminalRemoteTCP), f) &&
+				!strings.Contains(strings.ToLower(row.AddrHex), f) &&
+				!strings.Contains(strings.ToLower(row.Protocol), f) {
+				return
+			}
+		}
+		out = append(out, row)
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].TerminalConnID < out[j].TerminalConnID })
 	return out
 }
 

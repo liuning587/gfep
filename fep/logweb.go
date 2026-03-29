@@ -12,6 +12,7 @@ func fepWebProvider() *web.Provider {
 		HostStatus:      fepWebHostStatus,
 		Terminals:       fepWebTerminalRows,
 		Apps:            fepWebAppRows,
+		Bridges:         fepWebBridgeRows,
 		TerminalCounts:  fepWebTerminalCounts,
 		AppCounts:       fepWebAppCounts,
 		TrafficSnapshot: fepWebTrafficSnapshot,

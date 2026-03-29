@@ -430,6 +430,20 @@ func (s *Server) handleApps(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"rows": rows, "help": "上行/下行相对 GFEP：上行=主站→FEP，下行=FEP→主站（与终端表相反）"})
 }
 
+func (s *Server) handleBridges(w http.ResponseWriter, r *http.Request) {
+	if s.requireAuth(w, r) == nil {
+		return
+	}
+	var rows []BridgeRow
+	if s.Provider != nil && s.Provider.Bridges != nil {
+		rows = s.Provider.Bridges(r.URL.Query().Get("q"))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"rows": rows,
+		"help": "桥接链路：终端 TCP 上挂起的至 BridgeHost698 的出站连接。自主站收=rx（帧数/字节），至主站发=tx；与终端表「终端↔FEP」视角不同。heartUnAck 为未应答心跳累计（实现内部）。",
+	})
+}
+
 func logPathUnderRoot(root, rel string) (string, bool) {
 	rel = filepath.ToSlash(strings.TrimSpace(rel))
 	if rel == "" || strings.Contains(rel, "..") {
@@ -832,6 +846,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/api/terminals", s.handleTerminals)
 	mux.HandleFunc("/api/terminals/kick", s.handleTerminalKick)
 	mux.HandleFunc("/api/apps", s.handleApps)
+	mux.HandleFunc("/api/bridges", s.handleBridges)
 	mux.HandleFunc("/api/logs/files", s.handleLogFiles)
 	mux.HandleFunc("/api/logs/download", s.handleLogDownload)
 	mux.HandleFunc("/api/logs/stream", s.handleLiveStream)

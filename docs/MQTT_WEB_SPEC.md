@@ -5,14 +5,14 @@
 | 文档 | 说明 |
 |------|------|
 | [MQTT_SPEC.md](./MQTT_SPEC.md) | MQTT 接入、**Topic 首段 `v1/`**、集群、`frameHex` 透传、§13 示例、§12 平台对照、**§14 自检与优化清单** |
-| [WEB_SPEC.md](./WEB_SPEC.md) | **Web 管理控制台**（`LogWebPort`）：§10 API 索引与代码对照；角色鉴权、终端/主站表、实时/历史日志、配置、黑名单、`LogDebugClose`；含原日志下载与安全要求 |
+| [WEB_SPEC.md](./WEB_SPEC.md) | **Web 管理控制台**（`LogWebPort`）：§10 API；终端/主站/**698 桥接**表、`GET /api/bridges`；角色鉴权、实时/历史日志、配置、黑名单、`LogDebugClose` |
 
 **历史**：本文件曾为单文件合并草案；修订请以 **MQTT_SPEC.md** 与 **WEB_SPEC.md** 为准。
 
 | 项 | 内容 |
 |---|------|
 | 状态 | 索引 |
-| 版本 | 1.4 |
+| 版本 | 1.5 |
 
 ### 修订记录
 
@@ -22,3 +22,4 @@
 | 1.2 | 2026-03-28 | 改为索引，正文拆至 MQTT_SPEC / WEB_SPEC |
 | 1.3 | 2026-03-28 | 索引说明同步 WEB_SPEC v2.0（管理控制台） |
 | 1.4 | 2026-03-28 | 索引同步 WEB_SPEC v2.2（§10 API、实现对照） |
+| 1.5 | 2026-03-28 | 索引同步 WEB_SPEC v2.3（698 桥接菜单与 `/api/bridges`） |

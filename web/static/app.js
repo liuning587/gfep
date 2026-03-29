@@ -108,6 +108,7 @@
       { id: "overview", label: "总览" },
       { id: "terminals", label: "在线终端" },
       { id: "apps", label: "主站/APP" },
+      { id: "bridges", label: "698 桥接" },
       { id: "live", label: "实时日志" },
       { id: "files", label: "历史日志" },
       { id: "config", label: "配置" },
@@ -158,6 +159,7 @@
       if (id === "overview") await viewOverview();
       else if (id === "terminals") await viewTerminals();
       else if (id === "apps") await viewApps();
+      else if (id === "bridges") await viewBridges();
       else if (id === "live") viewLive();
       else if (id === "files") await viewFiles();
       else if (id === "config") await viewConfig();
@@ -594,20 +596,6 @@
     );
   }
 
-  /** @param {Record<string, unknown>} st status JSON */
-  function htmlBridge698Aside(st) {
-    if (!st || st.bridge698Enabled !== true) return "";
-    const host = escapeHtml(String(st.bridge698Host || ""));
-    return (
-      '<aside class="card apps-bridge-aside" aria-label="698 桥接">' +
-      "<h2>698 桥接</h2>" +
-      '<p class="muted">BridgeHost698 已启用。终端侧 698 在无法按 MSA 匹配主站转发时，可与下列对端建立桥接。</p>' +
-      '<div class="stat"><div class="k">对端地址</div><div class="v mono">' +
-      host +
-      "</div></div></aside>"
-    );
-  }
-
   /** @param {number | null | undefined} hostMemPct Sys 占主机物理内存 0–100，无采样则省略 */
   function ovHeapBar(label, mibs, maxMib, hostMemPct) {
     const v = mibs != null && !Number.isNaN(Number(mibs)) ? Number(mibs) : 0;
@@ -681,7 +669,7 @@
         const nTermSum = sumProtoMap(byP);
         const nAppSum = sumProtoMap(byApp);
         const ovQuick =
-          '<p class="muted ov-quicklinks">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button></p>';
+          '<p class="muted ov-quicklinks">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button> · <button type="button" class="linkish" data-go="bridges">698 桥接</button></p>';
         const secRun =
           '<section class="ov-section ov-section--hero" aria-label="运行概览">' +
           '<h3 class="section-title ov-section-focus">运行概览</h3>' +
@@ -1118,22 +1106,10 @@
   }
 
   async function viewApps() {
-    let st = {};
-    try {
-      st = await api("/api/status");
-    } catch (_) {
-      st = {};
-    }
-    const split = st.bridge698Enabled === true;
     content.innerHTML =
-      '<div class="apps-page' +
-      (split ? " apps-page--split" : "") +
-      '">' +
-      '<div class="card apps-page-main"><h2>主站 / APP 连接</h2><p class="muted">' +
-      "上行 = 主站→FEP 帧数/字节，下行 = FEP→主站（与终端表视角相反）</p>" +
-      '<div class="toolbar"><input type="search" id="aq" placeholder="MSA / IP 过滤" /><button class="primary" id="aref">刷新</button></div><div id="atable"></div></div>' +
-      htmlBridge698Aside(st) +
-      "</div>";
+      '<div class="card"><h2>主站 / APP 连接</h2><p class="muted">' +
+      "上行 = 主站→FEP 帧数/字节，下行 = FEP→主站（与终端表视角相反）。698 终端桥接至主站的<strong>独立 TCP</strong>见菜单 <strong>698 桥接</strong>。</p>" +
+      '<div class="toolbar"><input type="search" id="aq" placeholder="MSA / IP 过滤" /><button class="primary" id="aref">刷新</button></div><div id="atable"></div></div>';
     const run = async () => {
       const q = $("#aq").value.trim();
       const data = await api("/api/apps" + (q ? "?q=" + encodeURIComponent(q) : ""));
@@ -1185,6 +1161,88 @@
         '<div class="table-wrap"><table class="data"><thead><tr>' + cols + "</tr></thead><tbody>" + body + "</tbody></table></div>";
     };
     $("#aref").addEventListener("click", () => run().catch((e) => alert(e.message)));
+    await run();
+  }
+
+  async function viewBridges() {
+    const st = await api("/api/status").catch(() => ({}));
+    const en = st.bridge698Enabled === true;
+    const initial = await api("/api/bridges").catch(() => ({ rows: [], help: "" }));
+    const helpHint = escapeHtml(String(initial.help || ""));
+    content.innerHTML =
+      '<div class="card"><h2>698 桥接连接</h2>' +
+      (en
+        ? '<p class="muted">每条记录对应<strong>一个在线终端 TCP</strong>上挂起的、至配置 <code>BridgeHost698</code> 的桥接链路。' +
+          "<strong>自主站收</strong>（rx）/ <strong>至主站发</strong>（tx）为<strong>桥接 socket</strong>上的帧数与字节；登录/心跳/透传均计入。</p>"
+        : '<p class="muted bridge698-desc">当前配置下 <strong>BridgeHost698</strong> 未启用（空或以 0 开头）。无桥接链路时下列为空属正常。</p>') +
+      '<p class="muted">' +
+      helpHint +
+      "</p>" +
+      '<div class="toolbar"><input type="search" id="bq" placeholder="主站地址 / 终端 addr / IP / 地址hex" /><button class="primary" id="bref">刷新</button></div><div id="btable"></div></div>';
+    const run = async () => {
+      const q = $("#bq").value.trim();
+      const data = await api("/api/bridges" + (q ? "?q=" + encodeURIComponent(q) : ""));
+      const rows = data.rows || [];
+      if (!rows.length) {
+        $("#btable").innerHTML =
+          '<p class="empty">当前无桥接对象（无终端挂起桥接，或未启用 698 桥接）</p>';
+        return;
+      }
+      const cols =
+        "<th>#</th><th>终端connId</th><th>终端addr</th><th>终端IP:port</th><th>桥地址(hex)</th><th>主站</th><th>规约</th><th>状态</th><th>TCP起</th><th>桥登录</th><th>最近心跳</th><th>在线时长</th><th>最近收</th><th>最近发</th><th>rx帧/字节</th><th>tx帧/字节</th><th>heartUnAck</th>";
+      let i = 0;
+      const body = rows
+        .map((r) => {
+          i++;
+          return (
+            "<tr><td>" +
+            i +
+            "</td><td>" +
+            r.terminalConnId +
+            "</td><td>" +
+            escapeHtml(r.terminalAddr || "—") +
+            "</td><td>" +
+            escapeHtml(r.terminalRemoteTcp || "—") +
+            "</td><td class=\"mono\">" +
+            escapeHtml(r.addrHex || "—") +
+            "</td><td class=\"mono\">" +
+            escapeHtml(r.bridgeHost || "—") +
+            "</td><td>" +
+            escapeHtml(r.protocol || "—") +
+            "</td><td title=\"" +
+            escapeHtml(r.status || "") +
+            "\">" +
+            escapeHtml(r.statusText || r.status || "—") +
+            "</td><td>" +
+            (r.tcpSince || "—") +
+            "</td><td>" +
+            (r.loginTime || "—") +
+            "</td><td>" +
+            (r.heartbeatTime || "—") +
+            "</td><td>" +
+            escapeHtml(r.onlineDuration || "—") +
+            "</td><td>" +
+            (r.lastRxTime || "—") +
+            "</td><td>" +
+            (r.lastTxTime || "—") +
+            "</td><td>" +
+            r.rxPkts +
+            " / " +
+            r.rxBytes +
+            "</td><td>" +
+            r.txPkts +
+            " / " +
+            r.txBytes +
+            "</td><td>" +
+            (r.heartUnAck != null ? r.heartUnAck : "—") +
+            "</td></tr>"
+          );
+        })
+        .join("");
+      $("#btable").innerHTML =
+        '<div class="table-wrap"><table class="data"><thead><tr>' + cols + "</tr></thead><tbody>" + body + "</tbody></table></div>";
+    };
+    $("#bref").addEventListener("click", () => run().catch((e) => alert(e.message)));
     await run();
   }
 

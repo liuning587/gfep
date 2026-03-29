@@ -60,6 +60,14 @@ type Conn struct {
 	stopped     chan struct{}
 	stopOnce    sync.Once
 	isExit      atomic.Bool
+	// 以下供 Web 控制台：至主站为 Tx，自主站为 Rx；TCP 重连时由 disConnectServer 清零。
+	tcpSince       time.Time
+	rxBytes        atomic.Uint64
+	txBytes        atomic.Uint64
+	rxPkts         atomic.Uint64
+	txPkts         atomic.Uint64
+	lastRxUnixNano atomic.Int64
+	lastTxUnixNano atomic.Int64
 }
 
 // NewConn 新建桥接连接
@@ -118,7 +126,7 @@ func (c *Conn) Send(buf []byte) error {
 		logBridge.Printf("BT(LOST): %X\n", buf)
 		return nil
 	}
-	_, err := nc.Write(buf)
+	err := c.writeToMaster(nc, buf)
 	if err != nil {
 		logBridge.Printf("BT(ERR): %X\n", buf)
 		c.disConnectServer()
@@ -136,6 +144,7 @@ func (c *Conn) connectServer() error {
 	}
 	c.mu.Lock()
 	c.conn = conn
+	c.tcpSince = time.Now()
 	c.mu.Unlock()
 	c.status.Store(int32(tcpConnectOK))
 	logBridge.Println("connect " + c.host + " OK")
@@ -159,9 +168,11 @@ func (c *Conn) disConnectServer() {
 	c.status.Store(int32(unConnect))
 	_ = c.conn.Close()
 	c.conn = nil
+	c.tcpSince = time.Time{}
 	c.loginWaitCh = nil
 	c.loginTime = time.Time{}
 	c.heartTime = time.Time{}
+	resetBridgeTrafficCounters(c)
 }
 
 func (c *Conn) login() error {
@@ -195,7 +206,7 @@ func (c *Conn) login() error {
 		if nc == nil {
 			return errors.New("conn lost")
 		}
-		_, err := nc.Write(p)
+		err := c.writeToMaster(nc, p)
 		if err != nil {
 			logBridge.Printf("BL(ERR): %X\n", p)
 			return err
@@ -248,7 +259,7 @@ func (c *Conn) heartbeat() error {
 		p = zptl.PtlNwBuildPacket(1, c.addr)
 	}
 	if len(p) > 0 {
-		_, err := nc.Write(p)
+		err := c.writeToMaster(nc, p)
 		if err != nil {
 			logBridge.Printf("BH(ERR): %X\n", p)
 			return err
@@ -298,7 +309,7 @@ func (c *Conn) logout() {
 		return
 	}
 	_ = nc.SetWriteDeadline(time.Now().Add(3 * time.Second))
-	_, werr := nc.Write(p)
+	werr := c.writeToMaster(nc, p)
 	_ = nc.SetWriteDeadline(time.Time{})
 	if werr != nil {
 		logBridge.Printf("logout write: %v\n", werr)
@@ -342,6 +353,7 @@ func cbRecvPacket(ptype uint32, data []byte, arg interface{}) {
 	if !ok {
 		return
 	}
+	c.incRxPkt()
 	logBridge.Printf("BR: %X\n", data)
 	if c.packetType(ptype, data) == 1 {
 		switch connStatus(c.status.Load()) {
@@ -381,6 +393,7 @@ func (c *Conn) recv() {
 			c.disConnectServer()
 			break
 		}
+		c.addRxRaw(rlen)
 		ptlChk.Chkfrm(rbuf[0:rlen])
 	}
 }

@@ -67,6 +67,29 @@ type TerminalRow struct {
 	DownlinkBytes    string  `json:"downlinkBytes"`
 }
 
+// BridgeRow 终端上挂起的 698（等）桥接链路一行：至 BridgeHost 为 Tx，自主站为 Rx。
+type BridgeRow struct {
+	TerminalConnID    uint32  `json:"terminalConnId"`
+	TerminalAddr      string  `json:"terminalAddr"`
+	TerminalRemoteTCP string  `json:"terminalRemoteTcp"`
+	BridgeHost        string  `json:"bridgeHost"`
+	AddrHex           string  `json:"addrHex"`
+	Protocol          string  `json:"protocol"`
+	Status            string  `json:"status"`
+	StatusText        string  `json:"statusText"`
+	TcpSince          *string `json:"tcpSince,omitempty"`
+	LoginTime         *string `json:"loginTime,omitempty"`
+	HeartbeatTime     *string `json:"heartbeatTime,omitempty"`
+	LastRxTime        *string `json:"lastRxTime,omitempty"`
+	LastTxTime        *string `json:"lastTxTime,omitempty"`
+	OnlineDuration    string  `json:"onlineDuration,omitempty"`
+	RxPkts            string  `json:"rxPkts"`
+	TxPkts            string  `json:"txPkts"`
+	RxBytes           string  `json:"rxBytes"`
+	TxBytes           string  `json:"txBytes"`
+	HeartUnAck        int32   `json:"heartUnAck"`
+}
+
 // AppRow 主站/APP 连接表一行。
 type AppRow struct {
 	ConnID           uint32  `json:"connId"`
@@ -95,4 +118,6 @@ type Provider struct {
 	TrafficSnapshot func() TrafficStatus
 	// KickTerminal 关闭指定 connId 的 TCP（仅允许当前登记在终端 registry 中的连接）。
 	KickTerminal func(connID uint32) error
+	// Bridges 当前挂起的桥接链路（每终端连接至多一条；query 子串过滤）。
+	Bridges func(query string) []BridgeRow
 }
