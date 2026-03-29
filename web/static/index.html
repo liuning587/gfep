@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GFEP 控制台</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- 登录区默认可见：避免 app.js 未加载时 login/main 均被 hidden 导致整页空白 -->
+  <noscript><p style="padding:1rem;font-family:sans-serif;">请启用 JavaScript 以使用 GFEP 控制台。</p></noscript>
+  <div id="app">
+    <div id="login-panel" class="panel">
+      <h1>GFEP</h1>
+      <p class="muted">管理控制台 · 请先登录</p>
+      <form id="login-form" method="post" action="#">
+        <label>用户名 <input name="username" autocomplete="username" required /></label>
+        <label>密码 <input name="password" type="password" autocomplete="current-password" required /></label>
+        <button type="submit" id="login-submit">登录</button>
+        <p id="login-err" class="err"></p>
+      </form>
+      <p class="hint">首次部署：设置环境变量 <code>GFEP_WEB_BOOTSTRAP_PASSWORD</code> 后启动，将自动创建管理员（见 docs/WEB_SPEC.md）。</p>
+    </div>
+
+    <div id="main-panel" class="hidden">
+      <header class="topbar">
+        <strong>GFEP</strong>
+        <nav id="nav"></nav>
+        <span id="user-label" class="muted"></span>
+        <button type="button" id="btn-logout">退出</button>
+      </header>
+      <main id="content"></main>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

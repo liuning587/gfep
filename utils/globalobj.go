@@ -43,6 +43,8 @@ type GlobalObj struct {
 	LogWebEnabled bool   //是否启用 HTTP 列举/下载 LogDir 下日志（默认关闭，勿对公网裸奔）
 	LogWebHost    string //日志 Web 监听 IP，空则 0.0.0.0；仅当 LogWebEnabled 时有效
 	LogWebPort    int    //日志 Web 监听端口，<=0 时用 20084；仅当 LogWebEnabled 时有效
+	// LogWebSessionIdleMin  Web 会话空闲超时（分钟），<=0 时默认 480（8h）
+	LogWebSessionIdleMin int `json:"LogWebSessionIdleMin"`
 	LogDebugClose bool   //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
 	LogConnTrace  bool   //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
 	LogNetVerbose bool   //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
@@ -115,6 +117,9 @@ func (g *GlobalObj) Reload() {
 	if _, ok := raw["LogLinkLayer"]; !ok {
 		loaded.LogLinkLayer = g.LogLinkLayer
 	}
+	if _, ok := raw["LogWebSessionIdleMin"]; !ok {
+		loaded.LogWebSessionIdleMin = g.LogWebSessionIdleMin
+	}
 	*g = loaded
 
 	//Logger 设置
@@ -153,6 +158,7 @@ func init() {
 		LogWebEnabled:       false,
 		LogWebHost:          "0.0.0.0",
 		LogWebPort:          20084,
+		LogWebSessionIdleMin: 0,
 		LogDebugClose:       false,
 		LogConnTrace:        false,
 		LogNetVerbose:       false,

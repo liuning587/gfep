@@ -3,6 +3,7 @@ package fep
 import (
 	"gfep/bridge"
 	"gfep/utils"
+	"gfep/web"
 	"gfep/ziface"
 	"gfep/zptl"
 	"log"
@@ -182,6 +183,13 @@ func (p *ptlProfile) handleFromTerminal(conn ziface.IConnection, connStatus int,
 	case zptl.LINK_LOGIN:
 		if utils.GlobalObject.SupportCasLink {
 			// todo: 级联终端登录（与 SupportCas / 多表位配合）
+		}
+
+		web.EnsureBlacklistLoaded()
+		if web.TerminalAddrBlacklisted(tmnStr) {
+			linkLayerLogf(p.log, "[DCU->FEP][%s] terminal login rejected (blacklist) addr=%s conn=%d\n", logCatLink, tmnStr, conn.GetConnID())
+			conn.NeedStop()
+			return
 		}
 
 		preAddr := preAddrForTmnLogin(conn)

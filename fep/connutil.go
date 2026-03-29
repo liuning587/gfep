@@ -1,7 +1,9 @@
 package fep
 
 import (
+	"fmt"
 	"gfep/utils"
+	"gfep/web"
 	"gfep/ziface"
 	"gfep/znet"
 	"log"
@@ -134,12 +136,15 @@ func logPktLine(lg *log.Logger, from, to, cat string, connID uint32, data []byte
 	}
 	if len(data) == 0 {
 		lg.Printf("[%s->%s][%s] conn=%d (empty)\n", from, to, cat, connID)
+		relayWebPacketLine(from, to, cat, connID, "", "(empty)")
 		return
 	}
 	if utils.GlobalObject.LogForwardEgressHex {
 		lg.Printf("[%s->%s,%s,conn=%d] %X\n", from, to, cat, connID, data)
+		relayWebPacketLine(from, to, cat, connID, fmt.Sprintf("%X", data), "")
 	} else {
 		lg.Printf("[%s->%s][%s] %X\n", from, to, cat, data)
+		relayWebPacketLine(from, to, cat, connID, fmt.Sprintf("%X", data), "")
 	}
 }
 
@@ -149,4 +154,7 @@ func linkLayerLogf(lg *log.Logger, format string, args ...any) {
 		return
 	}
 	lg.Printf(format, args...)
+	if utils.GlobalObject.LogWebEnabled {
+		web.PublishLivef(fmt.Sprintf(format, args...))
+	}
 }

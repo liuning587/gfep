@@ -1,0 +1,157 @@
+:root {
+  --bg: #0f1419;
+  --surface: #1a2332;
+  --border: #2d3a4d;
+  --text: #e7ecf3;
+  --muted: #8b9cb3;
+  --accent: #3d8bfd;
+  --danger: #f85149;
+  --ok: #3fb950;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+.hidden { display: none !important; }
+.panel {
+  max-width: 380px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.panel h1 { margin: 0 0 0.5rem; font-weight: 600; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+.hint { font-size: 0.8rem; color: var(--muted); margin-top: 1.5rem; }
+.hint code { background: var(--bg); padding: 0.1rem 0.35rem; border-radius: 4px; }
+#login-form label { display: block; margin: 1rem 0 0.35rem; font-size: 0.9rem; }
+#login-form input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+#login-form button {
+  margin-top: 1.25rem;
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.err { color: var(--danger); min-height: 1.25rem; margin-top: 0.5rem; font-size: 0.85rem; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+.topbar nav { display: flex; gap: 0.35rem; flex: 1; flex-wrap: wrap; }
+.topbar nav button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.topbar nav button.active {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--bg);
+}
+#btn-logout {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+#content { padding: 1.25rem; max-width: 1400px; margin: 0 auto; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.card h2 { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 600; }
+.card h3.section-title { margin: 1.25rem 0 0.35rem; font-size: 1rem; font-weight: 600; color: var(--text); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+.stat { padding: 0.75rem; background: var(--bg); border-radius: 8px; }
+.stat .v { font-size: 1.35rem; font-weight: 600; }
+.stat .k { font-size: 0.8rem; color: var(--muted); }
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+table.data th, table.data td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+table.data th { color: var(--muted); font-weight: 500; }
+.toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; align-items: center; }
+.toolbar label.inline { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
+.toolbar input, .toolbar select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+.toolbar button {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.linkish {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font: inherit;
+}
+button.danger { color: var(--danger); border-color: var(--danger); }
+.log-view {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  background: #000;
+  color: #c9d1d9;
+  height: 420px;
+  overflow: auto;
+  padding: 0.5rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.empty { color: var(--muted); padding: 2rem; text-align: center; }
+.danger-zone { border-color: var(--danger); }
+label.cb { display: flex; align-items: center; gap: 0.35rem; margin: 0.35rem 0; font-size: 0.9rem; }

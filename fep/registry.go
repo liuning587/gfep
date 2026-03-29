@@ -89,6 +89,14 @@ func (a *appRegistry) snapshot() []addrConnID {
 	return out
 }
 
+// connKey 若 connID 在本注册表中则返回其业务键（终端 addr 或主站 MSA）。
+func (a *appRegistry) connKey(connID uint32) (key string, ok bool) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	k, ok := a.byConn[connID]
+	return k, ok
+}
+
 // tmnRegistry 终端地址索引。
 type tmnRegistry struct {
 	mu     sync.RWMutex
@@ -213,4 +221,27 @@ func (t *tmnRegistry) snapshot() []addrConnID {
 		out = append(out, addrConnID{addrStr: addr, connID: id})
 	}
 	return out
+}
+
+// addrForConn O(1) 查询终端 conn 当前登记地址（供实时日志等）。
+func (t *tmnRegistry) addrForConn(connID uint32) (addr string, ok bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	a, ok := t.byConn[connID]
+	return a, ok
+}
+
+// msaForConn O(1) 查询主站 conn 对应 MSA（供实时日志等）。
+func (a *appRegistry) msaForConn(connID uint32) (msa string, ok bool) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	m, ok := a.byConn[connID]
+	return m, ok
+}
+
+func (t *tmnRegistry) connAddr(connID uint32) (addr string, ok bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	a, ok := t.byConn[connID]
+	return a, ok
 }
