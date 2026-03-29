@@ -170,6 +170,373 @@
       .replace(/"/g, "&quot;");
   }
 
+  /** 导出文件名用：北京时间 yyyymmddHHMMss */
+  function fileStampBeijing(date) {
+    const d = date instanceof Date ? date : new Date();
+    const s = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(d);
+    return s.replace(/[-: ]/g, "");
+  }
+
+  function downloadTextFile(filename, text) {
+    const blob = new Blob([text != null ? text : ""], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }
+
+  function downloadXlsFromTableHtml(filename, innerTableHtml) {
+    const doc =
+      "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body>" +
+      innerTableHtml +
+      "</body></html>";
+    const blob = new Blob(["\ufeff" + doc], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }
+
+  function buildTerminalsExportTable(rows) {
+    const heads = [
+      "序号",
+      "connId",
+      "IP:port",
+      "协议",
+      "addr",
+      "在线时长",
+      "登录",
+      "心跳",
+      "最近收",
+      "最近发",
+      "上报",
+      "上行帧数",
+      "上行字节",
+      "下行次数",
+      "下行字节",
+    ];
+    const hr = "<tr>" + heads.map((h) => "<th>" + escapeHtml(h) + "</th>").join("") + "</tr>";
+    const br = rows
+      .map((r, i) => {
+        return (
+          "<tr><td>" +
+          (i + 1) +
+          "</td><td>" +
+          escapeHtml(String(r.connId)) +
+          "</td><td>" +
+          escapeHtml(r.remoteTcp) +
+          "</td><td>" +
+          escapeHtml(r.protocol) +
+          "</td><td>" +
+          escapeHtml(r.addr) +
+          "</td><td>" +
+          escapeHtml(r.onlineDuration || "") +
+          "</td><td>" +
+          escapeHtml(r.loginTime != null ? String(r.loginTime) : "—") +
+          "</td><td>" +
+          escapeHtml(r.heartbeatTime != null ? String(r.heartbeatTime) : "—") +
+          "</td><td>" +
+          escapeHtml(r.lastRxTime != null ? String(r.lastRxTime) : "—") +
+          "</td><td>" +
+          escapeHtml(r.lastTxTime != null ? String(r.lastTxTime) : "—") +
+          "</td><td>" +
+          escapeHtml(r.lastReportTime != null ? String(r.lastReportTime) : "—") +
+          "</td><td>" +
+          escapeHtml(String(r.uplinkMsgCount ?? "")) +
+          "</td><td>" +
+          escapeHtml(String(r.uplinkBytes ?? "")) +
+          "</td><td>" +
+          escapeHtml(String(r.downlinkMsgCount ?? "")) +
+          "</td><td>" +
+          escapeHtml(String(r.downlinkBytes ?? "")) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    return '<table border="1">' + hr + br + "</table>";
+  }
+
+  function fmtDurationZh(sec) {
+    if (sec == null || Number.isNaN(Number(sec))) return "—";
+    let s = Math.floor(Number(sec));
+    if (s < 0) s = 0;
+    if (s < 60) return s + "秒";
+    if (s < 3600) {
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      if (r === 0) return m + "分钟";
+      return m + "分" + r + "秒";
+    }
+    if (s < 86400) {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const r = s % 60;
+      if (m === 0 && r === 0) return h + "小时";
+      if (r === 0) return h + "小时" + m + "分";
+      return h + "小时" + m + "分" + r + "秒";
+    }
+    const days = Math.floor(s / 86400);
+    const rem = s % 86400;
+    const h = Math.floor(rem / 3600);
+    const m = Math.floor((rem % 3600) / 60);
+    return days + "天" + h + "小时" + m + "分";
+  }
+
+  function fmtHostBytes(n) {
+    if (n == null || Number.isNaN(Number(n))) return "—";
+    let v = Math.max(0, Number(n));
+    if (v > Number.MAX_SAFE_INTEGER) v = Number.MAX_SAFE_INTEGER;
+    if (v < 1024) return String(Math.round(v));
+    const units = ["K", "M", "G", "T", "P"];
+    let ui = -1;
+    let x = v;
+    while (x >= 1024 && ui < units.length - 1) {
+      x /= 1024;
+      ui++;
+    }
+    const suf = units[ui];
+    if (x >= 100) return x.toFixed(0) + suf;
+    if (x >= 10) return x.toFixed(1) + suf;
+    return x.toFixed(2) + suf;
+  }
+
+  function fmtHostBytesFromDecimalString(s) {
+    if (s == null || s === "") return "—";
+    let n;
+    try {
+      n = BigInt(String(s).trim());
+    } catch {
+      return "—";
+    }
+    if (n < 0n) n = 0n;
+    if (n < 1024n) return n.toString();
+    const units = ["K", "M", "G", "T", "P"];
+    let ui = -1;
+    let x = n;
+    while (x >= 1024n && ui < units.length - 1) {
+      x = x / 1024n;
+      ui++;
+    }
+    const xv = Number(x);
+    if (!Number.isFinite(xv)) return n.toString();
+    const suf = units[ui];
+    if (xv >= 100) return xv.toFixed(0) + suf;
+    if (xv >= 10) return xv.toFixed(1) + suf;
+    return xv.toFixed(2) + suf;
+  }
+
+  function drawOverviewTrafficChart(canvas, traffic) {
+    if (!canvas || !canvas.getContext) return null;
+    const rawT = traffic && traffic.terminalBytesPerMin;
+    const rawA = traffic && traffic.appBytesPerMin;
+    const tArr = Array.isArray(rawT) ? rawT.map((v) => Number(v) || 0) : [];
+    const aArr = Array.isArray(rawA) ? rawA.map((v) => Number(v) || 0) : [];
+    const pt = 15;
+    while (tArr.length < pt) tArr.unshift(0);
+    while (aArr.length < pt) aArr.unshift(0);
+    if (tArr.length > pt) tArr.splice(0, tArr.length - pt);
+    if (aArr.length > pt) aArr.splice(0, aArr.length - pt);
+    const maxV = Math.max(1, ...tArr, ...aArr);
+    const dpr = window.devicePixelRatio || 1;
+    const wrap = canvas.parentElement;
+    const cssW = Math.max(320, (wrap && wrap.clientWidth) || canvas.clientWidth || 600);
+    const cssH = 200;
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    const pad = { l: 52, r: 14, t: 18, b: 36 };
+    const gw = cssW - pad.l - pad.r;
+    const gh = cssH - pad.t - pad.b;
+    const cs = getComputedStyle(document.documentElement);
+    const colTerm = (cs.getPropertyValue("--accent") || "#4a7eb5").trim();
+    const colApp = (cs.getPropertyValue("--warning") || "#b8923a").trim();
+    const gridCol = (cs.getPropertyValue("--divider") || "#444").trim();
+    const txtCol = (cs.getPropertyValue("--text-tertiary") || "#888").trim();
+    ctx.strokeStyle = gridCol;
+    ctx.lineWidth = 1;
+    for (let g = 0; g <= 4; g++) {
+      const y = pad.t + (gh * g) / 4;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y);
+      ctx.lineTo(pad.l + gw, y);
+      ctx.stroke();
+    }
+    function yFrom(v) {
+      return pad.t + gh - (v / maxV) * gh;
+    }
+    function drawSeries(arr, color) {
+      ctx.beginPath();
+      for (let i = 0; i < pt; i++) {
+        const x = pad.l + (i / (pt - 1)) * gw;
+        const y = yFrom(arr[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+    drawSeries(tArr, colTerm);
+    drawSeries(aArr, colApp);
+    ctx.fillStyle = txtCol;
+    ctx.font = "11px system-ui, Segoe UI, sans-serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(fmtHostBytes(maxV), pad.l - 6, pad.t + 8);
+    ctx.fillText("0", pad.l - 6, pad.t + gh);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const xl = ["-14分", "-7分", "现在"];
+    const xi = [0, 7, 14];
+    for (let j = 0; j < xi.length; j++) {
+      const i = xi[j];
+      const x = pad.l + (i / (pt - 1)) * gw;
+      ctx.fillText(xl[j], x, pad.t + gh + 6);
+    }
+    return { pad, gw, gh, pt, cssW, cssH, tArr, aArr, maxV };
+  }
+
+  /** @param {HTMLCanvasElement} canvas */
+  function bindOverviewTrafficChartTooltip(canvas, layout, snap) {
+    const wrap = canvas && canvas.parentElement;
+    if (!canvas || !wrap || !layout) return;
+    let tip = wrap.querySelector(".ov-traffic-tip");
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "ov-traffic-tip";
+      tip.setAttribute("role", "tooltip");
+      wrap.appendChild(tip);
+    }
+    const { pad, gw, gh, pt, tArr, aArr } = layout;
+    const byT = snap.terminalsByProtocol || {};
+    const byA = snap.appsByProtocol || {};
+    const tr = snap.traffic || {};
+    const tcpN = snap.tcpConnTotal;
+
+    function protoLine(label, o) {
+      const keys = Object.keys(o).sort((a, b) => a.localeCompare(b));
+      if (!keys.length) return escapeHtml(label) + "：—";
+      const parts = keys.map((k) => escapeHtml(k) + " ×" + Number(o[k]));
+      return escapeHtml(label) + "：" + parts.join("，");
+    }
+
+    function timeLabel(i) {
+      const m = pt - 1 - i;
+      if (m <= 0) return "最近 1 分钟桶（最右端）";
+      return "约 " + m + " 分钟前";
+    }
+
+    function hide() {
+      tip.classList.remove("is-visible");
+      tip.innerHTML = "";
+    }
+
+    function show(html, clientX, clientY) {
+      tip.innerHTML = html;
+      tip.classList.add("is-visible");
+      const wRect = wrap.getBoundingClientRect();
+      const margin = 8;
+      tip.style.visibility = "hidden";
+      tip.style.left = "0";
+      tip.style.top = "0";
+      const tw = tip.offsetWidth;
+      const th = tip.offsetHeight;
+      tip.style.visibility = "";
+      let lx = clientX - wRect.left + 12;
+      let ly = clientY - wRect.top + 12;
+      lx = Math.max(margin, Math.min(lx, wrap.clientWidth - tw - margin));
+      ly = Math.max(margin, Math.min(ly, wrap.clientHeight - th - margin));
+      tip.style.left = lx + "px";
+      tip.style.top = ly + "px";
+    }
+
+    function indexFromCanvasXY(x, y) {
+      if (x < pad.l || x > pad.l + gw || y < pad.t || y > pad.t + gh) return null;
+      const rel = (x - pad.l) / gw;
+      return Math.min(pt - 1, Math.max(0, Math.round(rel * (pt - 1))));
+    }
+
+    function buildHtml(i) {
+      const tb = tArr[i] ?? 0;
+      const ab = aArr[i] ?? 0;
+      const termLine = protoLine("终端（按协议·去重）", byT);
+      const appLine = protoLine("主站/APP（按协议）", byA);
+      const rxT = fmtHostBytesFromDecimalString(tr.terminalTotalRx);
+      const txT = fmtHostBytesFromDecimalString(tr.terminalTotalTx);
+      const rxA = fmtHostBytesFromDecimalString(tr.appTotalRx);
+      const txA = fmtHostBytesFromDecimalString(tr.appTotalTx);
+      return (
+        '<div class="ov-traffic-tip-t">' +
+        escapeHtml(timeLabel(i)) +
+        "</div>" +
+        '<div class="ov-traffic-tip-row"><span class="lg-term">●</span> 本分钟终端总流量 <strong>' +
+        escapeHtml(fmtHostBytes(tb)) +
+        '</strong>　<span class="lg-app">●</span> 本分钟主站/APP总流量 <strong>' +
+        escapeHtml(fmtHostBytes(ab)) +
+        "</strong></div>" +
+        '<div class="ov-traffic-tip-sep"></div>' +
+        '<div class="ov-traffic-tip-h">当前在线（与本页刷新同步）</div>' +
+        "<div>" +
+        termLine +
+        "</div><div>" +
+        appLine +
+        '</div><div class="ov-traffic-tip-muted">TCP 业务连接（含非登记）：<strong>' +
+        escapeHtml(tcpN != null ? String(tcpN) : "—") +
+        "</strong></div>" +
+        '<div class="ov-traffic-tip-sep"></div>' +
+        '<div class="ov-traffic-tip-h">当前连接累计收发</div>' +
+        '<div class="ov-traffic-tip-muted">终端 收 ' +
+        escapeHtml(rxT) +
+        " · 发 " +
+        escapeHtml(txT) +
+        "</div>" +
+        '<div class="ov-traffic-tip-muted">主站/APP 收 ' +
+        escapeHtml(rxA) +
+        " · 发 " +
+        escapeHtml(txA) +
+        "</div>" +
+        '<div class="ov-traffic-tip-foot">各协议人数为当前快照；曲线为对应分钟总字节（整分采样）。</div>'
+      );
+    }
+
+    const onMove = (ev) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      const i = indexFromCanvasXY(x, y);
+      if (i == null) {
+        hide();
+        return;
+      }
+      show(buildHtml(i), ev.clientX, ev.clientY);
+    };
+    const onLeave = () => hide();
+    canvas.addEventListener("mousemove", onMove);
+    canvas.addEventListener("mouseleave", onLeave);
+  }
+
   function ovPct(x) {
     if (x == null || Number.isNaN(Number(x))) return null;
     return Math.min(100, Math.max(0, Number(x)));
@@ -205,18 +572,52 @@
     );
   }
 
-  function ovHeapBar(label, mibs, maxMib) {
+  /** @param {Record<string, unknown>} st status JSON */
+  function htmlBridge698Compact(st) {
+    if (!st || st.bridge698Enabled !== true) return "";
+    const host = escapeHtml(String(st.bridge698Host || ""));
+    return (
+      '<div class="bridge698-compact">' +
+      '<h4 class="bridge698-h">698 桥接</h4>' +
+      '<p class="muted bridge698-desc">已启用。无匹配主站转发时，终端 698 报文可走桥接对端。</p>' +
+      '<div class="stat bridge698-host-stat"><div class="k">BridgeHost698</div><div class="v mono">' +
+      host +
+      "</div></div></div>"
+    );
+  }
+
+  /** @param {Record<string, unknown>} st status JSON */
+  function htmlBridge698Aside(st) {
+    if (!st || st.bridge698Enabled !== true) return "";
+    const host = escapeHtml(String(st.bridge698Host || ""));
+    return (
+      '<aside class="card apps-bridge-aside" aria-label="698 桥接">' +
+      "<h2>698 桥接</h2>" +
+      '<p class="muted">BridgeHost698 已启用。终端侧 698 在无法按 MSA 匹配主站转发时，可与下列对端建立桥接。</p>' +
+      '<div class="stat"><div class="k">对端地址</div><div class="v mono">' +
+      host +
+      "</div></div></aside>"
+    );
+  }
+
+  /** @param {number | null | undefined} hostMemPct Sys 占主机物理内存 0–100，无采样则省略 */
+  function ovHeapBar(label, mibs, maxMib, hostMemPct) {
     const v = mibs != null && !Number.isNaN(Number(mibs)) ? Number(mibs) : 0;
     const cap = maxMib > 0 ? maxMib : 1;
     const w = Math.min(100, (v / cap) * 100);
+    let numHtml = v.toFixed(2) + " MiB";
+    if (hostMemPct != null && Number.isFinite(hostMemPct)) {
+      numHtml +=
+        ' <span class="ov-heap-hostpct">· 物理内存 ' + hostMemPct.toFixed(1) + "%</span>";
+    }
     return (
       '<div class="ov-meter ov-meter-compact">' +
       '<div class="ov-meter-top">' +
       '<span class="ov-meter-t">' +
       escapeHtml(label) +
       '</span><span class="ov-meter-num">' +
-      v.toFixed(2) +
-      " MiB</span></div>" +
+      numHtml +
+      "</span></div>" +
       '<div class="ov-meter-bar ov-meter-bar-heap"><span class="ov-meter-fill ov-fill-heap" style="width:' +
       w +
       '%"></span></div></div>'
@@ -246,33 +647,140 @@
         const fmtPct01 = (x) =>
           x != null && !Number.isNaN(x) ? (Number(x) * 100).toFixed(3) + "%" : "—";
         const diskRel = h.diskPath || ".";
+        const tr = s.traffic || {};
+        const procUp = s.processUptimeSec;
+        const procAt = s.processStartedAt;
+        const hostUp = h.hostUptimeSec;
+        const hostBoot = h.hostBootTimeUtc;
+        const uptimeBlock =
+          '<div class="ov-uptime muted">' +
+          "<div><span>操作系统已运行 </span><strong>" +
+          fmtDurationZh(hostUp) +
+          "</strong>" +
+          (hostBoot
+            ? '<span class="ov-uptime-at">（开机 北京 ' + escapeHtml(hostBoot) + "）</span>"
+            : "") +
+          "</div>" +
+          "<div><span>GFEP 已运行 </span><strong>" +
+          fmtDurationZh(procUp) +
+          "</strong>" +
+          (procAt
+            ? '<span class="ov-uptime-at">（启动 北京 ' + escapeHtml(procAt) + "）</span>"
+            : "") +
+          "</div></div>";
+        const sumProtoMap = (o) =>
+          sortProtoKeys(o).reduce((acc, k) => acc + (Number(o[k]) || 0), 0);
+        const nTermSum = sumProtoMap(byP);
+        const nAppSum = sumProtoMap(byApp);
+        const ovQuick =
+          '<p class="muted ov-quicklinks">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button></p>';
+        const secRun =
+          '<section class="ov-section ov-section--hero" aria-label="运行概览">' +
+          '<h3 class="section-title ov-section-focus">运行概览</h3>' +
+          '<p class="muted">约每 3 秒自动刷新 · 连接规模与运行时长</p>' +
+          uptimeBlock +
+          '<div class="ov-hero-grid">' +
+          '<div class="ov-hero-tcp"><span class="muted">TCP 业务连接</span> <strong class="ov-tcp-n">' +
+          (s.tcpConnTotal ?? "—") +
+          "</strong></div>" +
+          '<div class="grid2 ov-hero-sub">' +
+          '<div class="stat"><div class="k">在线终端（按协议表求和）</div><div class="v">' +
+          nTermSum +
+          "</div></div>" +
+          '<div class="stat"><div class="k">主站/APP（按协议表求和）</div><div class="v">' +
+          nAppSum +
+          "</div></div></div></div>" +
+          ovQuick +
+          "</section>";
+        const trafficSection =
+          '<section class="ov-section" aria-label="业务流量">' +
+          '<h3 class="section-title">业务流量</h3><p class="muted">当前<strong>在线连接</strong>累计收/发字节；折线为最近 <strong>15 个整分</strong>钟内<strong>每分钟总流量</strong>（蓝：终端，黄：主站/APP）。连接断开后累计值会减少；采样在整分边界，启动后需经过首个完整分钟才有第一个数据点。</p>' +
+          '<div class="grid2 ov-traffic-totals">' +
+          '<div class="stat"><div class="k">终端 · 累计收</div><div class="v">' +
+          escapeHtml(fmtHostBytesFromDecimalString(tr.terminalTotalRx)) +
+          "</div></div>" +
+          '<div class="stat"><div class="k">终端 · 累计发</div><div class="v">' +
+          escapeHtml(fmtHostBytesFromDecimalString(tr.terminalTotalTx)) +
+          "</div></div>" +
+          '<div class="stat"><div class="k">主站/APP · 累计收</div><div class="v">' +
+          escapeHtml(fmtHostBytesFromDecimalString(tr.appTotalRx)) +
+          "</div></div>" +
+          '<div class="stat"><div class="k">主站/APP · 累计发</div><div class="v">' +
+          escapeHtml(fmtHostBytesFromDecimalString(tr.appTotalTx)) +
+          "</div></div></div>" +
+          '<div class="ov-traffic-chart-wrap">' +
+          '<canvas id="ov-traffic-canvas" class="ov-traffic-canvas" aria-label="最近15分钟每分钟总流量"></canvas>' +
+          '<div class="ov-traffic-legend"><span class="lg-term">●</span> 终端 &nbsp; <span class="lg-app">●</span> 主站/APP</div></div></section>';
         const ha = g.heapAllocMiB,
           hi = g.heapInuseMiB,
           hs = g.heapSysMiB,
           sy = g.sysMiB;
         const maxHeap = Math.max(1, Number(ha) || 0, Number(hi) || 0, Number(hs) || 0, Number(sy) || 0);
-        mount.innerHTML =
-          '<div class="card overview-page"><h2>主机（OS）</h2><p class="muted">约每 3 秒自动刷新 · gopsutil 采样</p>' +
+        const memTotalB = h.memTotalBytes;
+        let sysHostMemPct = null;
+        if (memTotalB != null && Number(memTotalB) > 0 && sy != null && !Number.isNaN(Number(sy))) {
+          sysHostMemPct = Math.min(100, ((Number(sy) * 1048576) / Number(memTotalB)) * 100);
+        }
+        const secConn =
+          '<section class="ov-section" aria-label="连接按协议">' +
+          '<h3 class="section-title">连接 · 按协议</h3>' +
+          '<p class="muted">终端为在线去重地址数；主站为 TCP 连接数</p>' +
+          '<h4 class="ov-subh">在线终端</h4>' +
+          '<div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>在线终端(去重)</th></tr></thead><tbody>' +
+          (protoRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
+          '</tbody></table></div>' +
+          '<h4 class="ov-subh">主站 / APP</h4>' +
+          (s.bridge698Enabled === true
+            ? '<div class="ov-apps-bridge-row">' +
+              '<div class="ov-apps-col"><div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>连接数</th></tr></thead><tbody>' +
+              (appRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
+              "</tbody></table></div></div>" +
+              '<div class="ov-bridge-col">' +
+              htmlBridge698Compact(s) +
+              "</div></div>"
+            : '<div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>连接数</th></tr></thead><tbody>' +
+              (appRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
+              "</tbody></table></div>") +
+          "</section>";
+        const secHost =
+          '<section class="ov-section ov-section--muted" aria-label="主机资源">' +
+          '<h3 class="section-title">主机资源 (OS)</h3>' +
+          '<p class="muted">gopsutil 采样 · 与下方进程堆内存百分比含义不同</p>' +
           '<div class="ov-meter-grid">' +
           ovMeter("CPU 占用", h.cpuPercent, "瞬时采样") +
-          ovMeter("内存占用", h.memUsedPercent, "整机物理内存已用比例") +
+          ovMeter(
+            "内存占用",
+            h.memUsedPercent,
+            "已用 <strong>" +
+              fmtHostBytes(h.memUsedBytes) +
+              "</strong> / 总 <strong>" +
+              fmtHostBytes(h.memTotalBytes) +
+              "</strong>（物理内存）"
+          ) +
           ovMeter(
             "磁盘占用",
             h.diskUsedPercent,
-            "日志目录所在分区 · <code class=\"ov-path\">" + escapeHtml(diskRel) + "</code>"
+            "已用 <strong>" +
+              fmtHostBytes(h.diskUsedBytes) +
+              "</strong> / 总 <strong>" +
+              fmtHostBytes(h.diskTotalBytes) +
+              "</strong> · 日志目录所在分区 · <code class=\"ov-path\">" +
+              escapeHtml(diskRel) +
+              "</code>"
           ) +
-          "</div>" +
-          '<div class="ov-tcp"><span class="muted">TCP 业务连接</span> <strong class="ov-tcp-n">' +
-          (s.tcpConnTotal ?? "—") +
-          "</strong></div>" +
-          '<h3 class="section-title">Go 堆与运行时内存</h3><p class="muted">条形长度相对下列四项中的最大值；与主机「内存占用%」含义不同</p>' +
+          "</div></section>";
+        const secGo =
+          '<section class="ov-section ov-section--muted" aria-label="Go运行时">' +
+          '<h3 class="section-title">Go 运行时与构建</h3>' +
+          '<p class="muted">条形长度为相对本组四项最大值；<strong>Sys 总计</strong>旁「物理内存 %」为 runtime.Sys 约占主机物理内存（需 gopsutil 内存总览）。</p>' +
+          '<h4 class="ov-subh">堆与 Sys</h4>' +
           '<div class="ov-meter-grid ov-meter-grid--tight">' +
           ovHeapBar("HeapAlloc", ha, maxHeap) +
           ovHeapBar("HeapInuse", hi, maxHeap) +
           ovHeapBar("HeapSys", hs, maxHeap) +
-          ovHeapBar("Sys 总计", sy, maxHeap) +
+          ovHeapBar("Sys 总计", sy, maxHeap, sysHostMemPct) +
           "</div>" +
-          '<h3 class="section-title">其他运行时指标</h3><p class="muted">GC CPU 占比为进程启动以来累计，适合长期观察</p><div class="grid2">' +
+          '<h4 class="ov-subh">GC 与调度相关</h4><div class="grid2">' +
           '<div class="stat"><div class="k">协程数</div><div class="v">' +
           (g.goroutines != null ? g.goroutines : "—") +
           "</div></div>" +
@@ -304,23 +812,42 @@
           fmtMiB(g.mcacheSysMiB) +
           " MiB</div></div>" +
           "</div>" +
-          "<p class=\"muted\">版本 " +
-          escapeHtml(s.version || "") +
-          " · Worker池 " +
-          (s.workerPoolSize ?? "") +
+          '<h4 class="ov-subh">GFEP 构建信息</h4><p class="muted">产品版本、编译/构建时间与构建所用 Go 工具链（无 vcs 信息且未注入 ldflags 时构建时间可能为空）</p><div class="grid2">' +
+          '<div class="stat"><div class="k">产品版本</div><div class="v">' +
+          escapeHtml(s.version != null && s.version !== "" ? String(s.version) : "—") +
+          "</div></div>" +
+          '<div class="stat"><div class="k">编译 / 构建时间</div><div class="v mono">' +
+          escapeHtml(s.buildTime != null && String(s.buildTime).trim() !== "" ? String(s.buildTime) : "—") +
+          "</div></div>" +
+          '<div class="stat"><div class="k">Go 版本</div><div class="v mono">' +
+          escapeHtml(s.goVersion != null && String(s.goVersion).trim() !== "" ? String(s.goVersion) : "—") +
+          "</div></div></div>" +
+          "<p class=\"muted\">Worker池 " +
+          (s.workerPoolSize ?? "—") +
           " · 队列 " +
-          (s.maxWorkerTaskLen ?? "") +
-          '</p><p class="muted">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button></p>' +
-          '<h3 class="section-title">在线终端 · 按协议（去重）</h3>' +
-          '<div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>在线终端(去重)</th></tr></thead><tbody>' +
-          (protoRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
-          '</tbody></table></div>' +
-          '<h3 class="section-title">主站 / APP · 按协议</h3>' +
-          '<div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>连接数</th></tr></thead><tbody>' +
-          (appRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
-          "</tbody></table></div></div>";
+          (s.maxWorkerTaskLen ?? "—") +
+          "</p></section>";
+        mount.innerHTML =
+          '<div class="card overview-page">' +
+          secRun +
+          trafficSection +
+          secConn +
+          secHost +
+          secGo +
+          "</div>";
         mount.querySelectorAll("button[data-go]").forEach((btn) => {
           btn.addEventListener("click", () => selectTab(btn.getAttribute("data-go")));
+        });
+        requestAnimationFrame(() => {
+          const c = mount.querySelector("#ov-traffic-canvas");
+          if (!c) return;
+          const layout = drawOverviewTrafficChart(c, s.traffic || {});
+          bindOverviewTrafficChartTooltip(c, layout, {
+            terminalsByProtocol: s.terminalsByProtocol || {},
+            appsByProtocol: s.appsByProtocol || {},
+            tcpConnTotal: s.tcpConnTotal,
+            traffic: s.traffic || {},
+          });
         });
       } catch (e) {
         mount.innerHTML = '<p class="err">' + escapeHtml(e.message) + "</p>";
@@ -338,18 +865,25 @@
       '<select id="tp"><option value="">全部协议</option><option>376.1</option><option>698.45</option><option>NW</option></select>' +
       '<label class="cb"><input type="checkbox" id="tex" /> 展开同址多连接</label>' +
       '<label class="cb"><input type="checkbox" id="tshowdur" /> 显示在线时长</label>' +
+      '<label class="cb"><input type="checkbox" id="tshowcid" /> 显示 connId</label>' +
       '<span class="toolbar-sep" aria-hidden="true"></span>' +
       '<label class="inline muted">排序</label>' +
       '<select id="tsort"><option value="login">登录时间</option><option value="addr">终端地址</option></select>' +
       '<select id="torder"><option value="desc">降序</option><option value="asc">升序</option></select>' +
       '<label class="inline muted">每页</label>' +
-      '<select id="tpsize"><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select>' +
-      '<button class="primary" id="tref">刷新</button></div>' +
+      '<select id="tpsize"><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="500">500</option><option value="1000">1000</option></select>' +
+      '<button class="primary" id="tref">刷新</button>' +
+      '<button type="button" id="txls">导出 XLS</button></div>' +
       '<div id="ttable"></div>' +
-      '<div class="pager toolbar" id="tpnav" hidden>' +
+      '<div class="pager toolbar pager-term" id="tpnav" hidden>' +
+      '<button type="button" id="tfirst">首页</button>' +
       '<button type="button" id="tprev">上一页</button>' +
-      '<span id="tpinfo" class="muted"></span>' +
-      '<button type="button" id="tnext">下一页</button></div></div>';
+      '<label class="inline pager-goto">' +
+      '<span class="muted">第</span> <input type="number" id="tpgoto" min="1" step="1" class="pager-page-input" title="页码" /> ' +
+      '<span class="muted">页</span> <button type="button" id="tpgobtn">跳转</button></label>' +
+      '<span id="tpinfo" class="muted pager-info"></span>' +
+      '<button type="button" id="tnext">下一页</button>' +
+      '<button type="button" id="tlast">末页</button></div></div>';
 
     /** @type {{ rows: any[], total: number, page: number, pageSize: number } | null} */
     let termSnap = null;
@@ -369,13 +903,26 @@
         return;
       }
       pnav.hidden = false;
-      $("#tpinfo").textContent = "第 " + page + " / " + maxPage + " 页（共 " + total + " 条）";
-      $("#tprev").disabled = page <= 1;
-      $("#tnext").disabled = page >= maxPage;
+      $("#tpinfo").textContent = "共 " + maxPage + " 页 · " + total + " 条";
+      const pgIn = $("#tpgoto");
+      if (pgIn) {
+        pgIn.max = maxPage;
+        pgIn.value = String(page);
+      }
+      const disStart = page <= 1;
+      const disEnd = page >= maxPage;
+      $("#tfirst").disabled = disStart;
+      $("#tprev").disabled = disStart;
+      $("#tnext").disabled = disEnd;
+      $("#tlast").disabled = disEnd;
       const showDur = $("#tshowdur").checked;
+      const showCid = $("#tshowcid").checked;
+      const cidTh = showCid ? "<th>connId</th>" : "";
       const durTh = showDur ? "<th>在线时长</th>" : "";
       const cols =
-        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>addr</th>" +
+        "<th>#</th>" +
+        cidTh +
+        "<th>IP:port</th><th>协议</th><th>addr</th>" +
         durTh +
         "<th>登录</th><th>心跳</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th><th></th>";
       const base = (page - 1) * pageSize;
@@ -385,12 +932,13 @@
           i++;
           const dur = r.onlineDuration ? String(r.onlineDuration) : "";
           const durCell = showDur ? "<td>" + escapeHtml(dur || "—") + "</td>" : "";
+          const cidCell = showCid ? "<td>" + r.connId + "</td>" : "";
           return (
             "<tr><td>" +
             i +
-            "</td><td>" +
-            r.connId +
-            "</td><td>" +
+            "</td>" +
+            cidCell +
+            "<td>" +
             escapeHtml(r.remoteTcp) +
             "</td><td>" +
             escapeHtml(r.protocol) +
@@ -472,11 +1020,21 @@
       runSafe();
     });
     $("#tshowdur").addEventListener("change", () => paintTerminals());
+    $("#tshowcid").addEventListener("change", () => paintTerminals());
     $("#tq").addEventListener("keydown", (ev) => {
       if (ev.key === "Enter") {
         tPage = 1;
         runSafe();
       }
+    });
+    const maxPageFromSnap = () => {
+      if (!termSnap || !termSnap.total) return 1;
+      const ps = termSnap.pageSize || 20;
+      return Math.max(1, Math.ceil(termSnap.total / ps));
+    };
+    $("#tfirst").addEventListener("click", () => {
+      tPage = 1;
+      runSafe();
     });
     $("#tprev").addEventListener("click", () => {
       if (tPage > 1) {
@@ -484,8 +1042,33 @@
         runSafe();
       }
     });
+    const doGotoPage = () => {
+      const pgIn = $("#tpgoto");
+      if (!pgIn) return;
+      const mp = maxPageFromSnap();
+      let v = parseInt(String(pgIn.value).trim(), 10);
+      if (!Number.isFinite(v)) {
+        alert("请输入有效页码");
+        return;
+      }
+      if (v < 1) v = 1;
+      if (v > mp) v = mp;
+      tPage = v;
+      runSafe();
+    };
+    $("#tpgobtn").addEventListener("click", () => doGotoPage());
+    $("#tpgoto").addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        doGotoPage();
+      }
+    });
     $("#tnext").addEventListener("click", () => {
       tPage++;
+      runSafe();
+    });
+    $("#tlast").addEventListener("click", () => {
+      tPage = maxPageFromSnap();
       runSafe();
     });
     $("#ttable").addEventListener("click", async (ev) => {
@@ -500,14 +1083,49 @@
         alert(e.message);
       }
     });
+    $("#txls").addEventListener("click", async () => {
+      try {
+        const q = new URLSearchParams();
+        const f = $("#tq").value.trim();
+        if (f) q.set("q", f);
+        const p = $("#tp").value;
+        if (p) q.set("protocol", p);
+        if ($("#tex").checked) q.set("expand", "1");
+        q.set("sort", $("#tsort").value);
+        q.set("order", $("#torder").value);
+        q.set("all", "1");
+        const data = await api("/api/terminals?" + q.toString());
+        const rows = data.rows || [];
+        if (!rows.length) {
+          alert("暂无数据可导出");
+          return;
+        }
+        const stamp = fileStampBeijing(new Date());
+        downloadXlsFromTableHtml("gfep-terminals-" + stamp + ".xls", buildTerminalsExportTable(rows));
+      } catch (e) {
+        alert(e.message);
+      }
+    });
     await run();
   }
 
   async function viewApps() {
+    let st = {};
+    try {
+      st = await api("/api/status");
+    } catch (_) {
+      st = {};
+    }
+    const split = st.bridge698Enabled === true;
     content.innerHTML =
-      '<div class="card"><h2>主站 / APP 连接</h2><p class="muted">' +
+      '<div class="apps-page' +
+      (split ? " apps-page--split" : "") +
+      '">' +
+      '<div class="card apps-page-main"><h2>主站 / APP 连接</h2><p class="muted">' +
       "上行 = 主站→FEP 帧数/字节，下行 = FEP→主站（与终端表视角相反）</p>" +
-      '<div class="toolbar"><input type="search" id="aq" placeholder="MSA / IP 过滤" /><button class="primary" id="aref">刷新</button></div><div id="atable"></div></div>';
+      '<div class="toolbar"><input type="search" id="aq" placeholder="MSA / IP 过滤" /><button class="primary" id="aref">刷新</button></div><div id="atable"></div></div>' +
+      htmlBridge698Aside(st) +
+      "</div>";
     const run = async () => {
       const q = $("#aq").value.trim();
       const data = await api("/api/apps" + (q ? "?q=" + encodeURIComponent(q) : ""));
@@ -563,20 +1181,68 @@
   }
 
   function viewLive() {
+    const liveProtoOptions = [
+      "376.1",
+      "698.45",
+      "NW",
+      "376-主站",
+      "698-主站",
+      "Nw-主站",
+    ];
+    const protoChipsHtml = liveProtoOptions
+      .map(
+        (p) =>
+          '<label class="lfp-chip"><input type="checkbox" name="lfp-proto" value="' +
+          escapeHtml(p) +
+          '" checked /> <span>' +
+          escapeHtml(p) +
+          "</span></label>"
+      )
+      .join("");
     content.innerHTML =
-      '<div class="card card-live"><h2>实时通信日志</h2><p class="muted">依赖 LogPacketHex / LogLinkLayer 等开关；SSE 推送。报文行可按 <strong>协议</strong>、<strong>终端地址 addr</strong> 或 <strong>对端 IP:port</strong> 过滤。</p>' +
-      '<div class="toolbar">' +
-      '<label class="inline"><span class="muted">协议</span> <select id="lfp"><option value="">全部</option><option>376.1</option><option>698.45</option><option>NW</option><option>376-主站</option><option>698-主站</option><option>Nw-主站</option></select></label>' +
-      '<input type="search" id="lf" placeholder="addr 或 IP:port（子串）" />' +
+      '<div class="card card-live"><div class="live-card-head">' +
+      "<h2>实时通信日志</h2>" +
+      '<p class="muted live-intro">需开启 LogPacketHex / LogLinkLayer 等；SSE 推送。<strong>全部勾选</strong>或<strong>全部不勾选</strong>均不按协议过滤；仅<strong>部分勾选</strong>时按所选过滤。改条件后会自动重连（亦可点应用过滤）。</p></div>' +
+      '<div class="toolbar toolbar-live">' +
+      '<div class="lfp-inline" role="group" aria-label="按协议过滤">' +
+      '<span class="muted lfp-inline-label">协议</span>' +
+      '<div id="lfp-chips" class="lfp-chips">' +
+      protoChipsHtml +
+      '</div><span class="lfp-quick">' +
+      '<button type="button" class="linkish" id="lfp-all">全选</button>' +
+      '<span class="muted lfp-dot" aria-hidden="true">·</span>' +
+      '<button type="button" class="linkish" id="lfp-none">全不选</button>' +
+      "</span></div>" +
+      '<input type="search" id="lf" placeholder="addr / IP:port" />' +
       '<button type="button" class="primary" id="lapply">应用过滤</button>' +
-      '<button type="button" id="lclr">清空</button></div><div class="log-view" id="logbox"></div></div>';
+      '<button type="button" id="lclr">清空</button>' +
+      '<button type="button" id="ldl-txt">下载 .txt</button>' +
+      '<button type="button" id="ldl-log">下载 .log</button></div><div class="log-view" id="logbox"></div></div>';
     const box = $("#logbox");
+    const protoCheckboxes = () => Array.from(document.querySelectorAll("#lfp-chips input[name=lfp-proto]"));
+    $("#lfp-all").addEventListener("click", () => {
+      protoCheckboxes().forEach((el) => {
+        el.checked = true;
+      });
+    });
+    $("#lfp-none").addEventListener("click", () => {
+      protoCheckboxes().forEach((el) => {
+        el.checked = false;
+      });
+    });
     const streamURL = () => {
       const q = new URLSearchParams();
       const a = $("#lf").value.trim();
       if (a) q.set("addr", a);
-      const p = $("#lfp").value.trim();
-      if (p) q.set("protocol", p);
+      const all = protoCheckboxes();
+      const nAll = all.length;
+      const checked = all.filter((inp) => inp.checked);
+      const nCh = checked.length;
+      if (nCh > 0 && nCh < nAll) {
+        checked.forEach((inp) => {
+          if (inp.value) q.append("protocol", inp.value);
+        });
+      }
       const qs = q.toString();
       return "/api/logs/stream" + (qs ? "?" + qs : "");
     };
@@ -599,11 +1265,29 @@
         box.textContent += "\n[连接中断，请切换页面重试]\n";
       };
     };
+    let liveReconnectTimer = null;
+    const scheduleLiveReconnect = () => {
+      if (liveReconnectTimer != null) clearTimeout(liveReconnectTimer);
+      liveReconnectTimer = setTimeout(() => {
+        liveReconnectTimer = null;
+        connect();
+      }, 320);
+    };
     connect();
     $("#lapply").addEventListener("click", () => connect());
     $("#lclr").addEventListener("click", () => {
       box.textContent = "";
     });
+    $("#ldl-txt").addEventListener("click", () => {
+      const stamp = fileStampBeijing(new Date());
+      downloadTextFile("gfep-live-" + stamp + ".txt", box.textContent || "");
+    });
+    $("#ldl-log").addEventListener("click", () => {
+      const stamp = fileStampBeijing(new Date());
+      downloadTextFile("gfep-live-" + stamp + ".log", box.textContent || "");
+    });
+    $("#lfp-chips").addEventListener("change", scheduleLiveReconnect);
+    $("#lf").addEventListener("input", scheduleLiveReconnect);
   }
 
   async function viewFiles() {
@@ -623,10 +1307,19 @@
         href +
         '">下载</a></td></tr>';
     }
+    const totalHum =
+      data.totalSizeHuman != null && String(data.totalSizeHuman).trim() !== ""
+        ? String(data.totalSizeHuman)
+        : data.totalSize != null
+          ? fmtHostBytes(Number(data.totalSize))
+          : "—";
     content.innerHTML =
-      '<div class="card"><h2>历史日志</h2><p class="muted">' +
+      '<div class="card"><h2>历史日志</h2><p class="muted log-files-head">' +
+      '<span class="log-root-path">' +
       escapeHtml(data.root || "") +
-      '</p><div class="table-wrap"><table class="data"><thead><tr><th>文件</th><th>大小</th><th>修改时间</th><th></th></tr></thead><tbody>' +
+      '</span><span class="log-root-total">目录内文件合计 <strong>' +
+      escapeHtml(totalHum) +
+      "</strong></span></p><div class=\"table-wrap\"><table class=\"data\"><thead><tr><th>文件</th><th>大小</th><th>修改时间</th><th></th></tr></thead><tbody>" +
       (body || '<tr><td colspan=4 class="empty">无文件</td></tr>') +
       "</tbody></table></div></div>";
   }

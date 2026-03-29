@@ -23,11 +23,29 @@ type GoRuntimeStatus struct {
 
 // HostStatus 控制台总览中的主机采样（JSON 字段名保持稳定）。
 type HostStatus struct {
-	CPUPercent      float64         `json:"cpuPercent"`
-	MemUsedPercent  float64         `json:"memUsedPercent"`
-	DiskUsedPercent float64         `json:"diskUsedPercent"`
-	DiskPath        string          `json:"diskPath"`
+	CPUPercent      float64 `json:"cpuPercent"`
+	MemUsedPercent  float64 `json:"memUsedPercent"`
+	MemUsedBytes    int64   `json:"memUsedBytes,omitempty"`
+	MemTotalBytes   int64   `json:"memTotalBytes,omitempty"`
+	DiskUsedPercent float64 `json:"diskUsedPercent"`
+	DiskUsedBytes   int64   `json:"diskUsedBytes,omitempty"`
+	DiskTotalBytes  int64   `json:"diskTotalBytes,omitempty"`
+	DiskPath        string  `json:"diskPath"`
+	// HostUptimeSec 操作系统自启动以来的秒数（gopsutil/host）。
+	HostUptimeSec uint64 `json:"hostUptimeSec,omitempty"`
+	// HostBootTimeUtc 主机开机时刻（控制台按 Asia/Shanghai 格式化为可读串；JSON 字段名历史保留）。
+	HostBootTimeUtc string          `json:"hostBootTimeUtc,omitempty"`
 	GoRuntime       GoRuntimeStatus `json:"goRuntime,omitempty"`
+}
+
+// TrafficStatus 总览用：当前在线连接的累计流量 + 最近 15 个完整分钟的每分钟总字节。
+type TrafficStatus struct {
+	TerminalTotalRx     string   `json:"terminalTotalRx"`
+	TerminalTotalTx     string   `json:"terminalTotalTx"`
+	AppTotalRx          string   `json:"appTotalRx"`
+	AppTotalTx          string   `json:"appTotalTx"`
+	TerminalBytesPerMin []uint64 `json:"terminalBytesPerMin"`
+	AppBytesPerMin      []uint64 `json:"appBytesPerMin"`
 }
 
 // TerminalRow 在线终端表一行。
@@ -73,6 +91,8 @@ type Provider struct {
 	Apps           func(query string) []AppRow
 	TerminalCounts func() map[string]int
 	AppCounts      func() map[string]int
+	// TrafficSnapshot 当前连接累计收/发字节与近 15 分钟每分钟流量（Web 未启用采样时可为 nil）。
+	TrafficSnapshot func() TrafficStatus
 	// KickTerminal 关闭指定 connId 的 TCP（仅允许当前登记在终端 registry 中的连接）。
 	KickTerminal func(connID uint32) error
 }

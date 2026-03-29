@@ -107,16 +107,22 @@ func protocolFilterMatch(have, want string) bool {
 	return strings.Contains(have, want) || strings.Contains(want, have)
 }
 
-// liveLineMatchesFilters：addr 匹配 JSON 的 addr、remoteTcp 或整行子串；protocol 非空时仅保留带 protocol 字段且匹配的 JSON 行（kind=pkt），或不含 kind 的 JSON 若含 protocol 也可匹配。
-func liveLineMatchesFilters(line, addrFilter, protoFilter string) bool {
+// liveLineMatchesFilters：addr 匹配 JSON 的 addr、remoteTcp 或整行子串；protoFilters 非空时行须匹配其中任一协议（与 protocolFilterMatch 规则一致）；无 JSON 且需协议过滤则丢弃。
+func liveLineMatchesFilters(line, addrFilter string, protoFilters []string) bool {
+	var protos []string
+	for _, p := range protoFilters {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			protos = append(protos, p)
+		}
+	}
 	addrFilter = strings.TrimSpace(addrFilter)
-	protoFilter = strings.TrimSpace(protoFilter)
-	if addrFilter == "" && protoFilter == "" {
+	if addrFilter == "" && len(protos) == 0 {
 		return true
 	}
 	var m map[string]any
 	if json.Unmarshal([]byte(line), &m) != nil {
-		if protoFilter != "" {
+		if len(protos) > 0 {
 			return false
 		}
 		if addrFilter == "" {
@@ -124,9 +130,16 @@ func liveLineMatchesFilters(line, addrFilter, protoFilter string) bool {
 		}
 		return strings.Contains(strings.ToLower(line), strings.ToLower(addrFilter))
 	}
-	if protoFilter != "" {
+	if len(protos) > 0 {
 		p, _ := m["protocol"].(string)
-		if !protocolFilterMatch(p, protoFilter) {
+		ok := false
+		for _, w := range protos {
+			if protocolFilterMatch(p, w) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
 			return false
 		}
 	}
@@ -213,7 +226,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if srv != nil {
 		connN = srv.GetConnMgr().Len()
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	goVer, builtAt := computeBuildMeta()
+	out := map[string]any{
 		"host":                host,
 		"tcpConnTotal":        connN,
 		"terminalsByProtocol": byProto,
@@ -225,7 +239,26 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"forwardQueueLen":     utils.GlobalObject.ForwardQueueLen,
 		"version":             utils.GlobalObject.Version,
 		"name":                utils.GlobalObject.Name,
-	})
+		"goVersion":           goVer,
+		"buildTime":           builtAt,
+	}
+	ps := utils.ProcessStartedAt
+	if !ps.IsZero() {
+		out["processStartedAt"] = FormatDisplayWeb(ps)
+		out["processUptimeSec"] = int64(time.Since(ps).Seconds())
+	}
+	// 与 fep tryStartBridge698：空或首字符为 '0' 视为未启用
+	bh := utils.GlobalObject.BridgeHost698
+	if len(bh) > 0 && bh[0] != '0' {
+		out["bridge698Enabled"] = true
+		out["bridge698Host"] = strings.TrimSpace(bh)
+	} else {
+		out["bridge698Enabled"] = false
+	}
+	if s.Provider != nil && s.Provider.TrafficSnapshot != nil {
+		out["traffic"] = s.Provider.TrafficSnapshot()
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func cmpLoginTimePtr(a, b *string) int {
@@ -282,14 +315,20 @@ func terminalPageParams(q url.Values) (page, pageSize int) {
 	}
 	pageSize = 20
 	if v := strings.TrimSpace(q.Get("pageSize")); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			switch n {
-			case 10, 20, 50, 100:
-				pageSize = n
-			}
+		if n, err := strconv.Atoi(v); err == nil && terminalPageSizeAllowed(n) {
+			pageSize = n
 		}
 	}
 	return page, pageSize
+}
+
+func terminalPageSizeAllowed(n int) bool {
+	switch n {
+	case 10, 20, 50, 100, 200, 500, 1000:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Server) handleTerminals(w http.ResponseWriter, r *http.Request) {
@@ -313,6 +352,15 @@ func (s *Server) handleTerminals(w http.ResponseWriter, r *http.Request) {
 	}
 	sortTerminalRows(all, sortKey, order)
 	total := len(all)
+	if q.Get("all") == "1" || strings.EqualFold(q.Get("all"), "true") {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"rows":     all,
+			"total":    total,
+			"page":     1,
+			"pageSize": total,
+		})
+		return
+	}
 	page, pageSize := terminalPageParams(q)
 	maxPage := 1
 	if total > 0 {
@@ -412,6 +460,7 @@ func (s *Server) handleLogFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var entries []logListEntry
+	var totalFiles int64
 	_ = filepath.WalkDir(s.AbsLogRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -431,16 +480,24 @@ func (s *Server) handleLogFiles(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 		sz := fi.Size()
+		if !d.IsDir() {
+			totalFiles += sz
+		}
 		entries = append(entries, logListEntry{
 			Name:      filepath.ToSlash(rel),
 			Size:      sz,
 			SizeHuman: FormatBytesHuman(sz),
-			ModTime:   FormatDisplayUTC(fi.ModTime()),
+			ModTime:   FormatDisplayWeb(fi.ModTime()),
 			IsDir:     d.IsDir(),
 		})
 		return nil
 	})
-	writeJSON(w, http.StatusOK, map[string]any{"root": s.AbsLogRoot, "files": entries})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"root":           s.AbsLogRoot,
+		"files":          entries,
+		"totalSize":      totalFiles,
+		"totalSizeHuman": FormatBytesHuman(totalFiles),
+	})
 }
 
 func (s *Server) handleLogDownload(w http.ResponseWriter, r *http.Request) {
@@ -480,7 +537,7 @@ func (s *Server) handleLiveStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	addrF := r.URL.Query().Get("addr")
-	protoF := r.URL.Query().Get("protocol")
+	protoFs := r.URL.Query()["protocol"]
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -503,10 +560,10 @@ func (s *Server) handleLiveStream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			if !liveLineMatchesFilters(ev.Line, addrF, protoF) {
+			if !liveLineMatchesFilters(ev.Line, addrF, protoFs) {
 				continue
 			}
-			b, _ := json.Marshal(map[string]any{"ts": FormatDisplayUTC(ev.TS), "line": ev.Line})
+			b, _ := json.Marshal(map[string]any{"ts": FormatDisplayWeb(ev.TS), "line": ev.Line})
 			_, _ = fmt.Fprintf(w, "data: %s\n\n", string(b))
 			fl.Flush()
 		}

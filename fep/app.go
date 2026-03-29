@@ -269,6 +269,7 @@ func logInit() {
 
 // Main 启动前置机 TCP 服务（由根目录 gfep.go 的 main 调用）。
 func Main() {
+	utils.ProcessStartedAt = time.Now()
 	if runtime.GOOS != "linux" {
 		go usrInput()
 	}

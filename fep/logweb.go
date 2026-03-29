@@ -9,12 +9,13 @@ import (
 
 func fepWebProvider() *web.Provider {
 	return &web.Provider{
-		HostStatus:     fepWebHostStatus,
-		Terminals:      fepWebTerminalRows,
-		Apps:           fepWebAppRows,
-		TerminalCounts: fepWebTerminalCounts,
-		AppCounts:      fepWebAppCounts,
-		KickTerminal:   fepWebKickTerminal,
+		HostStatus:      fepWebHostStatus,
+		Terminals:       fepWebTerminalRows,
+		Apps:            fepWebAppRows,
+		TerminalCounts:  fepWebTerminalCounts,
+		AppCounts:       fepWebAppCounts,
+		TrafficSnapshot: fepWebTrafficSnapshot,
+		KickTerminal:    fepWebKickTerminal,
 	}
 }
 
@@ -32,5 +33,6 @@ func startLogWebIfEnabled() {
 		logx.Errorf("log web: resolve LogDir: %v", err)
 		return
 	}
+	startTrafficHistorySampler()
 	go web.StartConsole(web.ListenAddr(), absRoot, fepWebProvider())
 }

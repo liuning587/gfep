@@ -371,6 +371,45 @@ html[data-theme="light"] {
   margin-bottom: 0;
 }
 
+.card.card-live > .live-card-head {
+  flex-shrink: 0;
+}
+
+.live-card-head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.5rem 0.65rem;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--divider);
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+}
+
+.live-card-head h2 {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+
+.live-card-head .live-intro {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  line-height: 1.38;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--text-tertiary);
+}
+
 .card.card-live > .toolbar {
   flex-shrink: 0;
 }
@@ -383,6 +422,38 @@ html[data-theme="light"] {
   letter-spacing: 0.02em;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--divider);
+}
+
+.log-files-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.log-root-path {
+  flex: 1 1 12rem;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.log-root-total {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.log-root-total strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.card.card-live .live-card-head h2 {
+  margin: 0;
+  padding: 0;
+  border: none;
 }
 
 .card h3.section-title {
@@ -439,6 +510,248 @@ html[data-theme="light"] {
 }
 
 /* —— 总览图表（条形 / 进度） —— */
+.ov-uptime {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+
+.ov-uptime strong {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-uptime-at {
+  margin-left: 0.25rem;
+  color: var(--text-tertiary);
+  font-size: 0.82em;
+}
+
+.ov-traffic-totals {
+  margin-bottom: 0.75rem;
+}
+
+.ov-traffic-chart-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.5rem 0 1.25rem;
+}
+
+.ov-traffic-tip {
+  position: absolute;
+  z-index: 30;
+  display: none;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.5rem 0.65rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  text-align: left;
+}
+
+.ov-traffic-tip.is-visible {
+  display: block;
+}
+
+.ov-traffic-tip-t {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--text-secondary);
+}
+
+.ov-traffic-tip-row {
+  margin-bottom: 0.15rem;
+}
+
+.ov-traffic-tip-row .lg-term {
+  color: var(--accent);
+}
+
+.ov-traffic-tip-row .lg-app {
+  color: var(--warning);
+}
+
+.ov-traffic-tip-h {
+  font-weight: 600;
+  font-size: 0.74rem;
+  margin: 0.25rem 0 0.15rem;
+  color: var(--text-secondary);
+}
+
+.ov-traffic-tip-sep {
+  height: 1px;
+  margin: 0.35rem 0;
+  background: var(--divider);
+}
+
+.ov-traffic-tip-muted {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.ov-traffic-tip-foot {
+  margin-top: 0.35rem;
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  line-height: 1.35;
+}
+
+.ov-traffic-canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  vertical-align: top;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--log-bg);
+}
+
+.ov-traffic-legend {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.ov-traffic-legend .lg-term {
+  color: var(--accent);
+}
+
+.ov-traffic-legend .lg-app {
+  color: var(--warning);
+}
+
+.ov-apps-bridge-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(13rem, 17rem);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .ov-apps-bridge-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ov-bridge-col {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  background: var(--log-bg);
+}
+
+.bridge698-h {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.bridge698-desc {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.bridge698-host-stat {
+  margin: 0;
+}
+
+.bridge698-host-stat .v.mono {
+  word-break: break-all;
+}
+
+.v.mono,
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.apps-page {
+  display: block;
+}
+
+.apps-page--split {
+  display: grid;
+  grid-template-columns: 1fr minmax(15rem, 20rem);
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .apps-page--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.apps-page-main {
+  min-width: 0;
+}
+
+.apps-bridge-aside h2 {
+  font-size: 1.05rem;
+  margin-top: 0;
+}
+
+/* 总览：分区（先快照与业务，再连接，再主机/Go 细节） */
+.overview-page .ov-section {
+  margin: 0 0 1.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--divider);
+}
+
+.overview-page .ov-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.overview-page .ov-section--hero .section-title.ov-section-focus {
+  color: var(--accent);
+  font-size: 1.08rem;
+}
+
+.overview-page .ov-section--muted .section-title {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.overview-page .ov-subh {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.overview-page .ov-subh:first-of-type {
+  margin-top: 0.35rem;
+}
+
+.ov-hero-grid {
+  margin-top: 0.5rem;
+}
+
+.ov-hero-tcp {
+  margin-bottom: 0.55rem;
+  font-size: 0.92rem;
+}
+
+.ov-hero-sub {
+  margin-bottom: 0;
+}
+
+.ov-quicklinks {
+  margin: 0.65rem 0 0;
+}
+
 .overview-page .ov-meter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
@@ -454,6 +767,12 @@ html[data-theme="light"] {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.ov-meter-hint strong {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .ov-path {
@@ -486,6 +805,13 @@ html[data-theme="light"] {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text);
+}
+
+.ov-heap-hostpct {
+  font-size: 0.78em;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 .ov-meter-bar {
@@ -614,6 +940,32 @@ table.data tbody tr:hover {
   margin-bottom: 0;
 }
 
+.pager-term {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+.pager-term .pager-page-input {
+  width: 4.25rem;
+  min-width: 3rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-input);
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.pager-term .pager-info {
+  flex: 1 1 10rem;
+  min-width: 8rem;
+}
+
+.pager-term .pager-goto {
+  gap: 0.25rem;
+}
+
 .cell-tip {
   cursor: help;
   color: var(--text-tertiary);
@@ -730,10 +1082,100 @@ button.danger:hover {
 }
 
 .card-live .log-view {
-  flex: 1 1 auto;
-  min-height: 12rem;
-  height: auto;
-  max-height: none;
+  flex: 1 1 0;
+  min-height: 16rem;
+  max-height: calc(100dvh - 7.5rem);
+  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+/* 实时日志：协议 chip 与搜索、按钮同一行（窄屏自动换行） */
+.toolbar.toolbar-live {
+  align-items: center;
+  gap: 0.35rem 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.toolbar-live input[type="search"] {
+  flex: 1 1 8rem;
+  min-width: 6rem;
+  max-width: min(28rem, 100%);
+}
+
+.toolbar-live .primary,
+.toolbar-live #lclr {
+  flex-shrink: 0;
+}
+
+.lfp-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  min-width: 0;
+}
+
+.lfp-inline-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  margin-right: 0.1rem;
+}
+
+.lfp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.3rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.lfp-quick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.lfp-dot {
+  user-select: none;
+}
+
+.lfp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.12rem 0.38rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.lfp-chip:hover {
+  border-color: var(--border-light);
+  color: var(--text);
+}
+
+.lfp-chip:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--text);
+}
+
+.lfp-chip input[type="checkbox"] {
+  margin: 0;
+  width: 0.78rem;
+  height: 0.78rem;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .empty {

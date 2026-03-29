@@ -17,6 +17,7 @@ import (
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
@@ -169,9 +170,19 @@ func fepWebHostStatus() web.HostStatus {
 	}
 	if vm, err := mem.VirtualMemory(); err == nil {
 		out.MemUsedPercent = vm.UsedPercent
+		out.MemUsedBytes = int64(vm.Used)
+		out.MemTotalBytes = int64(vm.Total)
 	}
 	if du, err := disk.Usage(diskUsagePath); err == nil {
 		out.DiskUsedPercent = du.UsedPercent
+		out.DiskUsedBytes = int64(du.Used)
+		out.DiskTotalBytes = int64(du.Total)
+	}
+	if ut, err := host.Uptime(); err == nil {
+		out.HostUptimeSec = ut
+	}
+	if bt, err := host.BootTime(); err == nil && bt > 0 {
+		out.HostBootTimeUtc = web.FormatDisplayWeb(time.Unix(int64(bt), 0))
 	}
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
@@ -224,11 +235,11 @@ func terminalRowFromDetails(protocol string, d znet.ConnDetails) web.TerminalRow
 		Protocol:         protocol,
 		Addr:             d.TermAddr,
 		OnlineDuration:   formatOnlineSince(d.Ctime),
-		LoginTime:        web.FormatDisplayUTCPtr(d.Ltime),
-		HeartbeatTime:    web.FormatDisplayUTCPtr(d.Htime),
-		LastRxTime:       web.FormatDisplayUTCPtr(d.Rtime),
-		LastTxTime:       web.FormatDisplayUTCPtr(d.LastTxAt),
-		LastReportTime:   web.FormatDisplayUTCPtr(d.LastReportAt),
+		LoginTime:        web.FormatDisplayWebPtr(d.Ltime),
+		HeartbeatTime:    web.FormatDisplayWebPtr(d.Htime),
+		LastRxTime:       web.FormatDisplayWebPtr(d.Rtime),
+		LastTxTime:       web.FormatDisplayWebPtr(d.LastTxAt),
+		LastReportTime:   web.FormatDisplayWebPtr(d.LastReportAt),
 		UplinkMsgCount:   u64dec(d.RxFrames),
 		DownlinkMsgCount: u64dec(d.TxWrites),
 		UplinkBytes:      formatBytesHuman(d.RxFrameBytes),
@@ -249,11 +260,11 @@ func appRowFromDetails(protocol string, d znet.ConnDetails, msa string) web.AppR
 		RemoteTCP:        d.RemoteTCP,
 		Protocol:         protocol,
 		MasterSummary:    summary + " · 监听 " + local,
-		ConnTime:         web.FormatDisplayUTCPtr(d.Ctime),
+		ConnTime:         web.FormatDisplayWebPtr(d.Ctime),
 		OnlineDuration:   formatOnlineSince(d.Ctime),
-		LastRxTime:       web.FormatDisplayUTCPtr(d.Rtime),
-		LastTxTime:       web.FormatDisplayUTCPtr(d.LastTxAt),
-		LastReportTime:   web.FormatDisplayUTCPtr(d.LastReportAt),
+		LastRxTime:       web.FormatDisplayWebPtr(d.Rtime),
+		LastTxTime:       web.FormatDisplayWebPtr(d.LastTxAt),
+		LastReportTime:   web.FormatDisplayWebPtr(d.LastReportAt),
 		UplinkMsgCount:   u64dec(d.RxFrames),
 		DownlinkMsgCount: u64dec(d.TxWrites),
 		UplinkBytes:      u64dec(d.RxFrameBytes),
