@@ -9,6 +9,7 @@ import (
 	"gfep/utils"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,10 +17,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	sessionCookieName = "gfep_session"
-	sessionTokenBytes = 32
-)
+const sessionTokenBytes = 32
+
+func sessionCookieName() string {
+	n := strings.TrimSpace(utils.GlobalObject.LogWebSessionCookie)
+	if n != "" {
+		return n
+	}
+	port := utils.GlobalObject.LogWebPort
+	if port <= 0 {
+		port = 20084
+	}
+	return "gfep_session_" + strconv.Itoa(port)
+}
 
 type roleKind string
 

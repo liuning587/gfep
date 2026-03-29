@@ -44,6 +44,10 @@
   let me = null;
   let liveES = null;
   let overviewTimer = null;
+  /** 实时日志合并刷新 rAF，离开页面前须 cancel，避免卡死 */
+  let liveLogRedrawRaf = null;
+  /** 单屏最多保留行数（防 textContent+= 与巨型节点导致切换标签卡顿） */
+  const LIVE_LOG_MAX_LINES = 8000;
 
   async function api(path, opts = {}) {
     const { headers: optHeaders, ...rest } = opts || {};
@@ -137,6 +141,10 @@
   }
 
   async function renderView(id) {
+    if (liveLogRedrawRaf != null) {
+      cancelAnimationFrame(liveLogRedrawRaf);
+      liveLogRedrawRaf = null;
+    }
     if (liveES) {
       liveES.close();
       liveES = null;
@@ -1202,7 +1210,9 @@
     content.innerHTML =
       '<div class="card card-live"><div class="live-card-head">' +
       "<h2>实时通信日志</h2>" +
-      '<p class="muted live-intro">需开启 LogPacketHex / LogLinkLayer 等；SSE 推送。<strong>全部勾选</strong>或<strong>全部不勾选</strong>均不按协议过滤；仅<strong>部分勾选</strong>时按所选过滤。改条件后会自动重连（亦可点应用过滤）。</p></div>' +
+      '<p class="muted live-intro">需开启 LogPacketHex / LogLinkLayer 等；SSE 推送。<strong>全部勾选</strong>或<strong>全部不勾选</strong>均不按协议过滤；仅<strong>部分勾选</strong>时按所选过滤。改条件后会自动重连（亦可点应用过滤）。界面最多保留约 <strong>' +
+      LIVE_LOG_MAX_LINES +
+      "</strong> 行，超出丢弃最旧，减轻卡顿。</p></div>" +
       '<div class="toolbar toolbar-live">' +
       '<div class="lfp-inline" role="group" aria-label="按协议过滤">' +
       '<span class="muted lfp-inline-label">协议</span>' +
@@ -1219,6 +1229,41 @@
       '<button type="button" id="ldl-txt">下载 .txt</button>' +
       '<button type="button" id="ldl-log">下载 .log</button></div><div class="log-view" id="logbox"></div></div>';
     const box = $("#logbox");
+    const liveLogLines = [];
+    const pendingLiveLines = [];
+    const pushLiveLine = (line) => {
+      pendingLiveLines.push(line);
+    };
+    const trimLiveLogFromHead = (removeCount) => {
+      if (removeCount <= 0) return;
+      liveLogLines.splice(0, removeCount);
+      let n = 0;
+      while (n < removeCount && box.firstChild) {
+        box.removeChild(box.firstChild);
+        n++;
+      }
+    };
+    const flushLiveLogDom = () => {
+      liveLogRedrawRaf = null;
+      if (!box || !box.isConnected) return;
+      const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 800;
+      const batch = pendingLiveLines.splice(0, pendingLiveLines.length);
+      for (let i = 0; i < batch.length; i++) {
+        const line = batch[i];
+        liveLogLines.push(line);
+        const row = document.createElement("div");
+        row.className = "log-line";
+        row.textContent = line;
+        box.appendChild(row);
+      }
+      const over = liveLogLines.length - LIVE_LOG_MAX_LINES;
+      if (over > 0) trimLiveLogFromHead(over);
+      if (stick) box.scrollTop = box.scrollHeight;
+    };
+    const scheduleLiveLogRedraw = () => {
+      if (liveLogRedrawRaf != null) return;
+      liveLogRedrawRaf = requestAnimationFrame(flushLiveLogDom);
+    };
     const protoCheckboxes = () => Array.from(document.querySelectorAll("#lfp-chips input[name=lfp-proto]"));
     $("#lfp-all").addEventListener("click", () => {
       protoCheckboxes().forEach((el) => {
@@ -1255,14 +1300,15 @@
       liveES.onmessage = (ev) => {
         try {
           const o = JSON.parse(ev.data);
-          box.textContent += (o.ts || "") + " " + (o.line || "") + "\n";
-          if (box.scrollHeight < box.scrollTop + box.clientHeight + 800) box.scrollTop = box.scrollHeight;
+          pushLiveLine((o.ts || "") + " " + (o.line || ""));
         } catch {
-          box.textContent += ev.data + "\n";
+          pushLiveLine(String(ev.data || ""));
         }
+        scheduleLiveLogRedraw();
       };
       liveES.onerror = () => {
-        box.textContent += "\n[连接中断，请切换页面重试]\n";
+        pushLiveLine("[连接中断，请切换页面重试]");
+        scheduleLiveLogRedraw();
       };
     };
     let liveReconnectTimer = null;
@@ -1276,15 +1322,23 @@
     connect();
     $("#lapply").addEventListener("click", () => connect());
     $("#lclr").addEventListener("click", () => {
+      liveLogLines.length = 0;
+      pendingLiveLines.length = 0;
+      if (liveLogRedrawRaf != null) {
+        cancelAnimationFrame(liveLogRedrawRaf);
+        liveLogRedrawRaf = null;
+      }
       box.textContent = "";
     });
     $("#ldl-txt").addEventListener("click", () => {
       const stamp = fileStampBeijing(new Date());
-      downloadTextFile("gfep-live-" + stamp + ".txt", box.textContent || "");
+      const t = liveLogLines.length ? liveLogLines.join("\n") + "\n" : "";
+      downloadTextFile("gfep-live-" + stamp + ".txt", t);
     });
     $("#ldl-log").addEventListener("click", () => {
       const stamp = fileStampBeijing(new Date());
-      downloadTextFile("gfep-live-" + stamp + ".log", box.textContent || "");
+      const t = liveLogLines.length ? liveLogLines.join("\n") + "\n" : "";
+      downloadTextFile("gfep-live-" + stamp + ".log", t);
     });
     $("#lfp-chips").addEventListener("change", scheduleLiveReconnect);
     $("#lf").addEventListener("input", scheduleLiveReconnect);

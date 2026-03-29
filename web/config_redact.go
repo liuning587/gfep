@@ -14,7 +14,7 @@ func buildEffectiveConfigMap() map[string]any {
 		"BridgeHost698": g.BridgeHost698, "MaxConn": g.MaxConn,
 		"WorkerPoolSize": g.WorkerPoolSize, "MaxWorkerTaskLen": g.MaxWorkerTaskLen, "MaxMsgChanLen": g.MaxMsgChanLen,
 		"LogDir": g.LogDir, "LogFile": g.LogFile, "LogWebEnabled": g.LogWebEnabled, "LogWebHost": g.LogWebHost, "LogWebPort": g.LogWebPort,
-		"LogWebSessionIdleMin": g.LogWebSessionIdleMin,
+		"LogWebSessionIdleMin": g.LogWebSessionIdleMin, "LogWebSessionCookie": g.LogWebSessionCookie,
 		"LogDebugClose":        g.LogDebugClose, "LogConnTrace": g.LogConnTrace, "LogNetVerbose": g.LogNetVerbose,
 		"LogPacketHex": g.LogPacketHex, "LogLinkLayer": g.LogLinkLayer, "LogForwardEgressHex": g.LogForwardEgressHex,
 		"ForwardWorkers": g.ForwardWorkers, "ForwardQueueLen": g.ForwardQueueLen,

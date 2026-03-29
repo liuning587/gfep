@@ -41,7 +41,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 func readSession(r *http.Request) *sessionRec {
-	c, err := r.Cookie(sessionCookieName)
+	c, err := r.Cookie(sessionCookieName())
 	if err != nil || c.Value == "" {
 		return nil
 	}
@@ -50,7 +50,7 @@ func readSession(r *http.Request) *sessionRec {
 
 func clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     sessionCookieName(),
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
@@ -61,7 +61,7 @@ func clearSessionCookie(w http.ResponseWriter) {
 
 func setSessionCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
+		Name:     sessionCookieName(),
 		Value:    token,
 		Path:     "/",
 		MaxAge:   int(sessionTTL().Seconds()),
@@ -182,7 +182,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(sessionCookieName); err == nil {
+	if c, err := r.Cookie(sessionCookieName()); err == nil {
 		SessionDelete(c.Value)
 	}
 	clearSessionCookie(w)

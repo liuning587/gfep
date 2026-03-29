@@ -1090,6 +1090,13 @@ button.danger:hover {
   overflow-y: auto;
 }
 
+/* 每行独立节点，避免整段 textContent 替换触发巨型排版 */
+.log-view .log-line {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 /* 实时日志：协议 chip 与搜索、按钮同一行（窄屏自动换行） */
 .toolbar.toolbar-live {
   align-items: center;
