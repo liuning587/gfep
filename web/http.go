@@ -10,8 +10,11 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -187,6 +190,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	var host HostStatus
 	var byProto map[string]int
+	var appsByProto map[string]int
 	if s.Provider != nil {
 		if s.Provider.HostStatus != nil {
 			host = s.Provider.HostStatus()
@@ -194,9 +198,15 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		if s.Provider.TerminalCounts != nil {
 			byProto = s.Provider.TerminalCounts()
 		}
+		if s.Provider.AppCounts != nil {
+			appsByProto = s.Provider.AppCounts()
+		}
 	}
 	if byProto == nil {
 		byProto = map[string]int{}
+	}
+	if appsByProto == nil {
+		appsByProto = map[string]int{}
 	}
 	srv := utils.GlobalObject.TCPServer
 	connN := 0
@@ -207,6 +217,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"host":                host,
 		"tcpConnTotal":        connN,
 		"terminalsByProtocol": byProto,
+		"appsByProtocol":      appsByProto,
 		"workerPoolSize":      utils.GlobalObject.WorkerPoolSize,
 		"maxWorkerTaskLen":    utils.GlobalObject.MaxWorkerTaskLen,
 		"maxMsgChanLen":       utils.GlobalObject.MaxMsgChanLen,
@@ -217,17 +228,145 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func cmpLoginTimePtr(a, b *string) int {
+	if a == nil && b == nil {
+		return 0
+	}
+	if a == nil {
+		return -1
+	}
+	if b == nil {
+		return 1
+	}
+	return strings.Compare(*a, *b)
+}
+
+func sortTerminalRows(rows []TerminalRow, sortKey, order string) {
+	sortKey = strings.ToLower(strings.TrimSpace(sortKey))
+	if sortKey != "addr" {
+		sortKey = "login"
+	}
+	desc := strings.ToLower(strings.TrimSpace(order)) == "desc"
+	if sortKey == "addr" {
+		sort.SliceStable(rows, func(i, j int) bool {
+			ai := strings.ToLower(rows[i].Addr)
+			aj := strings.ToLower(rows[j].Addr)
+			if ai != aj {
+				if desc {
+					return ai > aj
+				}
+				return ai < aj
+			}
+			return rows[i].ConnID < rows[j].ConnID
+		})
+		return
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		c := cmpLoginTimePtr(rows[i].LoginTime, rows[j].LoginTime)
+		if c != 0 {
+			if desc {
+				return c > 0
+			}
+			return c < 0
+		}
+		return rows[i].ConnID < rows[j].ConnID
+	})
+}
+
+func terminalPageParams(q url.Values) (page, pageSize int) {
+	page = 1
+	if v := strings.TrimSpace(q.Get("page")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			page = n
+		}
+	}
+	pageSize = 20
+	if v := strings.TrimSpace(q.Get("pageSize")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			switch n {
+			case 10, 20, 50, 100:
+				pageSize = n
+			}
+		}
+	}
+	return page, pageSize
+}
+
 func (s *Server) handleTerminals(w http.ResponseWriter, r *http.Request) {
 	if s.requireAuth(w, r) == nil {
 		return
 	}
-	var rows []TerminalRow
+	q := r.URL.Query()
+	var all []TerminalRow
 	if s.Provider != nil && s.Provider.Terminals != nil {
-		q := r.URL.Query()
 		expand := q.Get("expand") == "1" || strings.EqualFold(q.Get("expand"), "true")
-		rows = s.Provider.Terminals(expand, q.Get("protocol"), q.Get("q"))
+		all = s.Provider.Terminals(expand, q.Get("protocol"), q.Get("q"))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"rows": rows})
+	sortKey := q.Get("sort")
+	order := q.Get("order")
+	if order == "" {
+		if strings.EqualFold(sortKey, "addr") {
+			order = "asc"
+		} else {
+			order = "desc"
+		}
+	}
+	sortTerminalRows(all, sortKey, order)
+	total := len(all)
+	page, pageSize := terminalPageParams(q)
+	maxPage := 1
+	if total > 0 {
+		maxPage = (total + pageSize - 1) / pageSize
+	}
+	if page > maxPage {
+		page = maxPage
+	}
+	if page < 1 {
+		page = 1
+	}
+	start := (page - 1) * pageSize
+	var rows []TerminalRow
+	if start < total {
+		end := start + pageSize
+		if end > total {
+			end = total
+		}
+		rows = all[start:end]
+	} else {
+		rows = []TerminalRow{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"rows":     rows,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	})
+}
+
+func (s *Server) handleTerminalKick(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if s.requireAuth(w, r) == nil {
+		return
+	}
+	var body struct {
+		ConnID uint32 `json:"connId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ConnID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "无效请求：需要 JSON {\"connId\":<uint>}"})
+		return
+	}
+	if s.Provider == nil || s.Provider.KickTerminal == nil {
+		writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "未实现踢线"})
+		return
+	}
+	if err := s.Provider.KickTerminal(body.ConnID); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (s *Server) handleApps(w http.ResponseWriter, r *http.Request) {
@@ -261,10 +400,11 @@ func logPathUnderRoot(root, rel string) (string, bool) {
 }
 
 type logListEntry struct {
-	Name    string `json:"name"`
-	Size    int64  `json:"size"`
-	ModTime string `json:"modTime"`
-	IsDir   bool   `json:"isDir"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	SizeHuman string `json:"sizeHuman"`
+	ModTime   string `json:"modTime"`
+	IsDir     bool   `json:"isDir"`
 }
 
 func (s *Server) handleLogFiles(w http.ResponseWriter, r *http.Request) {
@@ -290,11 +430,13 @@ func (s *Server) handleLogFiles(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil
 		}
+		sz := fi.Size()
 		entries = append(entries, logListEntry{
-			Name:    filepath.ToSlash(rel),
-			Size:    fi.Size(),
-			ModTime: FormatDisplayUTC(fi.ModTime()),
-			IsDir:   d.IsDir(),
+			Name:      filepath.ToSlash(rel),
+			Size:      sz,
+			SizeHuman: FormatBytesHuman(sz),
+			ModTime:   FormatDisplayUTC(fi.ModTime()),
+			IsDir:     d.IsDir(),
 		})
 		return nil
 	})
@@ -629,6 +771,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/api/users", s.handleUsers)
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/terminals", s.handleTerminals)
+	mux.HandleFunc("/api/terminals/kick", s.handleTerminalKick)
 	mux.HandleFunc("/api/apps", s.handleApps)
 	mux.HandleFunc("/api/logs/files", s.handleLogFiles)
 	mux.HandleFunc("/api/logs/download", s.handleLogDownload)

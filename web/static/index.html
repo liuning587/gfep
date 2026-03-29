@@ -11,8 +11,13 @@
   <noscript><p style="padding:1rem;font-family:sans-serif;">请启用 JavaScript 以使用 GFEP 控制台。</p></noscript>
   <div id="app">
     <div id="login-panel" class="panel">
-      <h1>GFEP</h1>
-      <p class="muted">管理控制台 · 请先登录</p>
+      <div class="panel-header">
+        <div class="panel-intro">
+          <h1>GFEP</h1>
+          <p class="muted">管理控制台 · 请先登录</p>
+        </div>
+        <button type="button" class="btn-theme" title="切换为浅色主题" aria-label="切换浅色或深色主题" aria-pressed="false">☀</button>
+      </div>
       <form id="login-form" method="post" action="#">
         <label>用户名 <input name="username" autocomplete="username" required /></label>
         <label>密码 <input name="password" type="password" autocomplete="current-password" required /></label>

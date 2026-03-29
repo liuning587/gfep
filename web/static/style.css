@@ -43,14 +43,28 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg-base);
   background-image: linear-gradient(180deg, var(--body-grad-top) 0%, var(--bg-base) 35%, var(--body-grad-bot) 100%);
   background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+}
+
+#app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* 亮色商务主题（工业控制台日间模式） */
@@ -98,6 +112,24 @@ html[data-theme="light"] {
   background: var(--surface);
   box-shadow: var(--shadow-md);
   border-top: 3px solid var(--accent-line);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+
+.panel-intro {
+  min-width: 0;
+  flex: 1;
+}
+
+.panel-header .btn-theme {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
 }
 
 .panel h1 {
@@ -189,15 +221,19 @@ html[data-theme="light"] {
 
 /* —— 主导航 —— */
 .app-main {
-  min-height: 100vh;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 0.55rem 1.25rem;
+  padding: 0.55rem clamp(0.75rem, 2vw, 1.5rem);
   flex-wrap: wrap;
+  flex-shrink: 0;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -300,20 +336,43 @@ html[data-theme="light"] {
 }
 
 #content {
-  padding: 1.25rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem clamp(0.65rem, 2vw, 2rem) 1.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* —— 卡片 —— */
 .card {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
   margin-bottom: 1rem;
-  padding: 1rem 1.2rem;
+  padding: 1rem clamp(0.85rem, 1.5vw, 1.35rem);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   border-left: 3px solid var(--accent-line);
+}
+
+/* 实时日志页：占满主区域剩余高度 */
+.card.card-live {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.card.card-live > .toolbar {
+  flex-shrink: 0;
 }
 
 .card h2 {
@@ -336,8 +395,20 @@ html[data-theme="light"] {
 
 .grid2 {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
   gap: 0.65rem;
+}
+
+@media (min-width: 1600px) {
+  .grid2 {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+}
+
+@media (min-width: 2200px) {
+  .grid2 {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
 }
 
 .stat {
@@ -365,6 +436,99 @@ html[data-theme="light"] {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.25rem;
+}
+
+/* —— 总览图表（条形 / 进度） —— */
+.overview-page .ov-meter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.overview-page .ov-meter-grid--tight {
+  gap: 0.65rem 1rem;
+}
+
+.ov-meter-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.ov-path {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--divider);
+  color: var(--accent);
+}
+
+.ov-meter-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.ov-meter-t {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+}
+
+.ov-meter-num {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ov-meter-bar {
+  height: 0.55rem;
+  background: var(--divider);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.ov-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+  transition: width 0.35s ease;
+  min-width: 0;
+}
+
+.ov-meter-fill.is-warn {
+  background: linear-gradient(90deg, #8a7030, var(--warning));
+}
+
+.ov-meter-fill.is-high {
+  background: linear-gradient(90deg, #8b4540, var(--danger));
+}
+
+.ov-fill-heap {
+  background: linear-gradient(90deg, #3d5a78, var(--accent-line));
+}
+
+.ov-meter-bar-heap {
+  height: 0.45rem;
+}
+
+.ov-tcp {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.ov-tcp-n {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 /* —— 表格 —— */
@@ -408,6 +572,19 @@ table.data tbody tr:hover {
   background: var(--accent-on);
 }
 
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sm);
+  margin-top: 0.25rem;
+}
+
+.table-wrap table.data {
+  min-width: max(100%, 720px);
+}
+
 /* —— 工具栏 —— */
 .toolbar {
   display: flex;
@@ -415,6 +592,47 @@ table.data tbody tr:hover {
   flex-wrap: wrap;
   margin-bottom: 0.75rem;
   align-items: center;
+}
+
+.toolbar input[type="search"] {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  max-width: min(48rem, 100%);
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--divider);
+  margin: 0 0.25rem;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.pager.toolbar {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.cell-tip {
+  cursor: help;
+  color: var(--text-tertiary);
+  border-bottom: 1px dotted var(--text-tertiary);
+}
+
+button.t-kick {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--warning);
+  cursor: pointer;
+}
+
+button.t-kick:hover {
+  border-color: var(--warning);
+  background: var(--surface-hover);
 }
 
 .toolbar label.inline {
@@ -498,7 +716,9 @@ button.danger:hover {
   font-family: "Consolas", "Cascadia Mono", ui-monospace, monospace;
   font-size: 0.75rem;
   line-height: 1.45;
-  height: 420px;
+  min-height: clamp(200px, 28vh, 360px);
+  height: clamp(280px, 42vh, 520px);
+  max-height: calc(100dvh - 14rem);
   overflow: auto;
   padding: 0.55rem 0.65rem;
   border-radius: var(--radius-sm);
@@ -507,6 +727,13 @@ button.danger:hover {
   color: var(--log-fg);
   background: var(--log-bg);
   border: 1px solid var(--border);
+}
+
+.card-live .log-view {
+  flex: 1 1 auto;
+  min-height: 12rem;
+  height: auto;
+  max-height: none;
 }
 
 .empty {
@@ -521,6 +748,26 @@ button.danger:hover {
 
 .danger-zone h2 {
   border-bottom-color: rgba(198, 93, 84, 0.35);
+}
+
+.bl-textarea {
+  width: 100%;
+  min-height: clamp(12rem, 32vh, 26rem);
+  background: var(--surface-input);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.65rem;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.bl-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 label.cb {

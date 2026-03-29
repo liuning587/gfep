@@ -1,10 +1,12 @@
 package fep
 
 import (
+	"errors"
 	"fmt"
 	"gfep/utils"
 	"gfep/web"
 	"gfep/znet"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -20,6 +22,59 @@ import (
 
 func u64dec(n uint64) string {
 	return strconv.FormatUint(n, 10)
+}
+
+// formatBytesHuman 将字节数格式化为 K/M/G 等（1024 进制）。
+func formatBytesHuman(n uint64) string {
+	if n < 1024 {
+		return strconv.FormatUint(n, 10)
+	}
+	v := float64(n)
+	units := []string{"K", "M", "G", "T", "P"}
+	u := -1
+	for v >= 1024 && u < len(units)-1 {
+		v /= 1024
+		u++
+	}
+	suf := units[u]
+	if v >= 100 {
+		return fmt.Sprintf("%.0f%s", v, suf)
+	}
+	if v >= 10 {
+		return fmt.Sprintf("%.1f%s", v, suf)
+	}
+	return fmt.Sprintf("%.2f%s", v, suf)
+}
+
+func isTerminalRegistryConn(connID uint32) bool {
+	if _, ok := regTmn376.addrForConn(connID); ok {
+		return true
+	}
+	if _, ok := regTmn698.addrForConn(connID); ok {
+		return true
+	}
+	_, ok := regTmnNw.addrForConn(connID)
+	return ok
+}
+
+// fepWebKickTerminal 主动断开终端 TCP（connId 须当前登记在任一端规约终端 registry 中）。
+func fepWebKickTerminal(connID uint32) error {
+	if connID == 0 {
+		return errors.New("无效 connId")
+	}
+	if !isTerminalRegistryConn(connID) {
+		return errors.New("非终端连接或已不在线")
+	}
+	srv := utils.GlobalObject.TCPServer
+	if srv == nil {
+		return errors.New("TCP 服务未就绪")
+	}
+	ic, err := srv.GetConnMgr().Get(connID)
+	if err != nil {
+		return errors.New("连接不存在或已关闭")
+	}
+	go ic.Stop()
+	return nil
 }
 
 // formatOnlineSince 将连接建立时间转为「在线时长」中文文案（相对当前时刻）。
@@ -67,25 +122,55 @@ var (
 	hostStatusAt     time.Time
 )
 
+// diskPathForOverview 总览 JSON 中的路径展示：配置为相对路径则原样规范化；绝对路径则尽量相对当前工作目录，否则退回末级目录名。
+func diskPathForOverview(configured, absForUsage string) string {
+	configured = strings.TrimSpace(configured)
+	if configured == "" {
+		return "."
+	}
+	if !filepath.IsAbs(configured) {
+		return filepath.ToSlash(filepath.Clean(configured))
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return filepath.ToSlash(filepath.Base(absForUsage))
+	}
+	rel, err := filepath.Rel(wd, absForUsage)
+	if err != nil {
+		return filepath.ToSlash(filepath.Base(absForUsage))
+	}
+	rel = filepath.Clean(rel)
+	if rel == "." {
+		return "."
+	}
+	if strings.HasPrefix(rel, "..") {
+		return filepath.ToSlash(filepath.Base(absForUsage))
+	}
+	return filepath.ToSlash(rel)
+}
+
 func fepWebHostStatus() web.HostStatus {
 	hostStatusMu.Lock()
 	defer hostStatusMu.Unlock()
 	if time.Since(hostStatusAt) < hostStatusTTL {
 		return hostStatusCached
 	}
-	out := web.HostStatus{DiskPath: utils.GlobalObject.LogDir}
-	if root := utils.GlobalObject.LogDir; root != "" {
-		if abs, err := filepath.Abs(root); err == nil {
-			out.DiskPath = abs
-		}
+	cfgLog := strings.TrimSpace(utils.GlobalObject.LogDir)
+	diskUsagePath := "."
+	if cfgLog != "" {
+		diskUsagePath = cfgLog
 	}
+	if abs, err := filepath.Abs(diskUsagePath); err == nil {
+		diskUsagePath = abs
+	}
+	out := web.HostStatus{DiskPath: diskPathForOverview(utils.GlobalObject.LogDir, diskUsagePath)}
 	if pct, err := cpu.Percent(hostStatusCPUSample, false); err == nil && len(pct) > 0 {
 		out.CPUPercent = pct[0]
 	}
 	if vm, err := mem.VirtualMemory(); err == nil {
 		out.MemUsedPercent = vm.UsedPercent
 	}
-	if du, err := disk.Usage(out.DiskPath); err == nil {
+	if du, err := disk.Usage(diskUsagePath); err == nil {
 		out.DiskUsedPercent = du.UsedPercent
 	}
 	var ms runtime.MemStats
@@ -138,7 +223,6 @@ func terminalRowFromDetails(protocol string, d znet.ConnDetails) web.TerminalRow
 		RemoteTCP:        d.RemoteTCP,
 		Protocol:         protocol,
 		Addr:             d.TermAddr,
-		ConnTime:         web.FormatDisplayUTCPtr(d.Ctime),
 		OnlineDuration:   formatOnlineSince(d.Ctime),
 		LoginTime:        web.FormatDisplayUTCPtr(d.Ltime),
 		HeartbeatTime:    web.FormatDisplayUTCPtr(d.Htime),
@@ -147,8 +231,8 @@ func terminalRowFromDetails(protocol string, d znet.ConnDetails) web.TerminalRow
 		LastReportTime:   web.FormatDisplayUTCPtr(d.LastReportAt),
 		UplinkMsgCount:   u64dec(d.RxFrames),
 		DownlinkMsgCount: u64dec(d.TxWrites),
-		UplinkBytes:      u64dec(d.RxFrameBytes),
-		DownlinkBytes:    u64dec(d.TxWriteBytes),
+		UplinkBytes:      formatBytesHuman(d.RxFrameBytes),
+		DownlinkBytes:    formatBytesHuman(d.TxWriteBytes),
 	}
 }
 
@@ -184,10 +268,10 @@ func fepWebTerminalRows(expand bool, protoFilter, query string) []web.TerminalRo
 	}
 	var items []item
 	for _, t := range regTmn376.snapshot() {
-		items = append(items, item{"376/1376-1", t})
+		items = append(items, item{"376.1", t})
 	}
 	for _, t := range regTmn698.snapshot() {
-		items = append(items, item{"698-45", t})
+		items = append(items, item{"698.45", t})
 	}
 	for _, t := range regTmnNw.snapshot() {
 		items = append(items, item{"NW", t})
@@ -312,6 +396,30 @@ func fepWebAppRows(query string) []web.AppRow {
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].ConnID < rows[j].ConnID })
 	return rows
+}
+
+func fepWebAppCounts() map[string]int {
+	type item struct {
+		proto string
+		ac    addrConnID
+	}
+	var items []item
+	for _, a := range regApp376.snapshot() {
+		items = append(items, item{"376-主站", a})
+	}
+	for _, a := range regApp698.snapshot() {
+		items = append(items, item{"698-主站", a})
+	}
+	for _, a := range regAppNw.snapshot() {
+		items = append(items, item{"Nw-主站", a})
+	}
+	m := make(map[string]int)
+	for _, it := range items {
+		if _, ok := connDetailsOrEmpty(it.ac.connID); ok {
+			m[it.proto]++
+		}
+	}
+	return m
 }
 
 func fepWebTerminalCounts() map[string]int {

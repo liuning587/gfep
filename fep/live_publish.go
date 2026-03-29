@@ -9,10 +9,10 @@ import (
 // liveStreamLinkMeta 按 connID 解析规约标签与终端/主站侧地址（用于 Web 实时过滤）。
 func liveStreamLinkMeta(connID uint32) (protocol, addr, remoteTCP string) {
 	if a, ok := regTmn376.addrForConn(connID); ok {
-		return "376/1376-1", a, remoteTCPForConn(connID)
+		return "376.1", a, remoteTCPForConn(connID)
 	}
 	if a, ok := regTmn698.addrForConn(connID); ok {
-		return "698-45", a, remoteTCPForConn(connID)
+		return "698.45", a, remoteTCPForConn(connID)
 	}
 	if a, ok := regTmnNw.addrForConn(connID); ok {
 		return "NW", a, remoteTCPForConn(connID)

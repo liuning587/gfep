@@ -18,12 +18,11 @@
     try {
       localStorage.setItem(THEME_STORAGE_KEY, light ? "light" : "dark");
     } catch (_) {}
-    const btn = document.getElementById("btn-theme");
-    if (btn) {
+    document.querySelectorAll(".btn-theme").forEach((btn) => {
       btn.setAttribute("aria-pressed", light ? "true" : "false");
       btn.title = light ? "切换为深色主题" : "切换为浅色主题";
       btn.textContent = light ? "\u263e" : "\u2600";
-    }
+    });
   }
 
   function initTheme() {
@@ -35,13 +34,12 @@
   }
 
   initTheme();
-  const btnTheme = document.getElementById("btn-theme");
-  if (btnTheme) {
-    btnTheme.addEventListener("click", () => {
+  document.querySelectorAll(".btn-theme").forEach((btn) => {
+    btn.addEventListener("click", () => {
       const isLight = document.documentElement.getAttribute("data-theme") === "light";
       applyTheme(!isLight);
     });
-  }
+  });
 
   let me = null;
   let liveES = null;
@@ -172,6 +170,59 @@
       .replace(/"/g, "&quot;");
   }
 
+  function ovPct(x) {
+    if (x == null || Number.isNaN(Number(x))) return null;
+    return Math.min(100, Math.max(0, Number(x)));
+  }
+
+  function ovMeter(title, pct, hintHtml) {
+    const p = ovPct(pct);
+    const label = p == null ? "—" : p.toFixed(1) + "%";
+    const w = p == null ? 0 : p;
+    let fillMod = "";
+    if (p != null) {
+      if (p >= 90) fillMod = " is-high";
+      else if (p >= 75) fillMod = " is-warn";
+    }
+    const hint = hintHtml ? '<p class="ov-meter-hint muted">' + hintHtml + "</p>" : "";
+    return (
+      '<div class="ov-meter">' +
+      '<div class="ov-meter-top">' +
+      '<span class="ov-meter-t">' +
+      escapeHtml(title) +
+      '</span><span class="ov-meter-num">' +
+      label +
+      "</span></div>" +
+      '<div class="ov-meter-bar" role="img" aria-label="' +
+      escapeHtml(title + " " + label) +
+      '"><span class="ov-meter-fill' +
+      fillMod +
+      '" style="width:' +
+      w +
+      '%"></span></div>' +
+      hint +
+      "</div>"
+    );
+  }
+
+  function ovHeapBar(label, mibs, maxMib) {
+    const v = mibs != null && !Number.isNaN(Number(mibs)) ? Number(mibs) : 0;
+    const cap = maxMib > 0 ? maxMib : 1;
+    const w = Math.min(100, (v / cap) * 100);
+    return (
+      '<div class="ov-meter ov-meter-compact">' +
+      '<div class="ov-meter-top">' +
+      '<span class="ov-meter-t">' +
+      escapeHtml(label) +
+      '</span><span class="ov-meter-num">' +
+      v.toFixed(2) +
+      " MiB</span></div>" +
+      '<div class="ov-meter-bar ov-meter-bar-heap"><span class="ov-meter-fill ov-fill-heap" style="width:' +
+      w +
+      '%"></span></div></div>'
+    );
+  }
+
   async function viewOverview() {
     const mount = document.createElement("div");
     mount.id = "overview-root";
@@ -183,45 +234,48 @@
         const h = s.host || {};
         const g = h.goRuntime || {};
         const byP = s.terminalsByProtocol || {};
-        const protoRows = Object.keys(byP)
+        const byApp = s.appsByProtocol || {};
+        const sortProtoKeys = (o) => Object.keys(o).sort((a, b) => a.localeCompare(b));
+        const protoRows = sortProtoKeys(byP)
           .map((k) => "<tr><td>" + escapeHtml(k) + "</td><td>" + byP[k] + "</td></tr>")
+          .join("");
+        const appRows = sortProtoKeys(byApp)
+          .map((k) => "<tr><td>" + escapeHtml(k) + "</td><td>" + byApp[k] + "</td></tr>")
           .join("");
         const fmtMiB = (x) => (x != null && !Number.isNaN(x) ? Number(x).toFixed(2) : "—");
         const fmtPct01 = (x) =>
           x != null && !Number.isNaN(x) ? (Number(x) * 100).toFixed(3) + "%" : "—";
+        const diskRel = h.diskPath || ".";
+        const ha = g.heapAllocMiB,
+          hi = g.heapInuseMiB,
+          hs = g.heapSysMiB,
+          sy = g.sysMiB;
+        const maxHeap = Math.max(1, Number(ha) || 0, Number(hi) || 0, Number(hs) || 0, Number(sy) || 0);
         mount.innerHTML =
-          '<div class="card"><h2>主机（OS）</h2><p class="muted">约每 3 秒自动刷新 · gopsutil 采样</p><div class="grid2">' +
-          '<div class="stat"><div class="k">CPU %</div><div class="v">' +
-          (h.cpuPercent != null ? h.cpuPercent.toFixed(1) : "—") +
-          "</div></div>" +
-          '<div class="stat"><div class="k">内存占用 %</div><div class="v">' +
-          (h.memUsedPercent != null ? h.memUsedPercent.toFixed(1) : "—") +
-          "</div></div>" +
-          '<div class="stat"><div class="k">磁盘占用 % (' +
-          escapeHtml(h.diskPath || "") +
-          ')</div><div class="v">' +
-          (h.diskUsedPercent != null ? h.diskUsedPercent.toFixed(1) : "—") +
-          "</div></div>" +
-          '<div class="stat"><div class="k">TCP 连接数</div><div class="v">' +
-          (s.tcpConnTotal ?? "—") +
-          "</div></div>" +
+          '<div class="card overview-page"><h2>主机（OS）</h2><p class="muted">约每 3 秒自动刷新 · gopsutil 采样</p>' +
+          '<div class="ov-meter-grid">' +
+          ovMeter("CPU 占用", h.cpuPercent, "瞬时采样") +
+          ovMeter("内存占用", h.memUsedPercent, "整机物理内存已用比例") +
+          ovMeter(
+            "磁盘占用",
+            h.diskUsedPercent,
+            "日志目录所在分区 · <code class=\"ov-path\">" + escapeHtml(diskRel) + "</code>"
+          ) +
           "</div>" +
-          '<h3 class="section-title">Go 运行时</h3><p class="muted">runtime.MemStats · 与主机「内存占用%」含义不同；GC CPU 占比为进程启动以来累计值，适合长期观察</p><div class="grid2">' +
+          '<div class="ov-tcp"><span class="muted">TCP 业务连接</span> <strong class="ov-tcp-n">' +
+          (s.tcpConnTotal ?? "—") +
+          "</strong></div>" +
+          '<h3 class="section-title">Go 堆与运行时内存</h3><p class="muted">条形长度相对下列四项中的最大值；与主机「内存占用%」含义不同</p>' +
+          '<div class="ov-meter-grid ov-meter-grid--tight">' +
+          ovHeapBar("HeapAlloc", ha, maxHeap) +
+          ovHeapBar("HeapInuse", hi, maxHeap) +
+          ovHeapBar("HeapSys", hs, maxHeap) +
+          ovHeapBar("Sys 总计", sy, maxHeap) +
+          "</div>" +
+          '<h3 class="section-title">其他运行时指标</h3><p class="muted">GC CPU 占比为进程启动以来累计，适合长期观察</p><div class="grid2">' +
           '<div class="stat"><div class="k">协程数</div><div class="v">' +
           (g.goroutines != null ? g.goroutines : "—") +
           "</div></div>" +
-          '<div class="stat"><div class="k">堆分配 HeapAlloc</div><div class="v">' +
-          fmtMiB(g.heapAllocMiB) +
-          " MiB</div></div>" +
-          '<div class="stat"><div class="k">堆使用中 HeapInuse</div><div class="v">' +
-          fmtMiB(g.heapInuseMiB) +
-          " MiB</div></div>" +
-          '<div class="stat"><div class="k">堆系统 HeapSys</div><div class="v">' +
-          fmtMiB(g.heapSysMiB) +
-          " MiB</div></div>" +
-          '<div class="stat"><div class="k">运行时 Sys 总计</div><div class="v">' +
-          fmtMiB(g.sysMiB) +
-          " MiB</div></div>" +
           '<div class="stat"><div class="k">栈使用 StackInuse</div><div class="v">' +
           fmtMiB(g.stackInuseMiB) +
           " MiB</div></div>" +
@@ -257,9 +311,14 @@
           " · 队列 " +
           (s.maxWorkerTaskLen ?? "") +
           '</p><p class="muted">快捷：<button type="button" class="linkish" data-go="terminals">在线终端</button> · <button type="button" class="linkish" data-go="apps">主站/APP</button></p>' +
-          '<table class="data"><thead><tr><th>协议</th><th>在线终端(去重)</th></tr></thead><tbody>' +
-          (protoRows || "<tr><td colspan=2 class=empty>无数据</td></tr>") +
-          "</tbody></table></div>";
+          '<h3 class="section-title">在线终端 · 按协议（去重）</h3>' +
+          '<div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>在线终端(去重)</th></tr></thead><tbody>' +
+          (protoRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
+          '</tbody></table></div>' +
+          '<h3 class="section-title">主站 / APP · 按协议</h3>' +
+          '<div class="table-wrap"><table class="data"><thead><tr><th>协议</th><th>连接数</th></tr></thead><tbody>' +
+          (appRows || '<tr><td colspan="2" class="empty">无数据</td></tr>') +
+          "</tbody></table></div></div>";
         mount.querySelectorAll("button[data-go]").forEach((btn) => {
           btn.addEventListener("click", () => selectTab(btn.getAttribute("data-go")));
         });
@@ -272,31 +331,60 @@
   }
 
   async function viewTerminals() {
+    let tPage = 1;
     content.innerHTML =
       '<div class="card"><h2>在线终端</h2><div class="toolbar">' +
-      '<input type="search" id="tq" placeholder="addr / IP 过滤" />' +
-      '<select id="tp"><option value="">全部协议</option><option>376/1376-1</option><option>698-45</option><option>NW</option></select>' +
+      '<input type="search" id="tq" placeholder="addr / IP 过滤（回车查询）" />' +
+      '<select id="tp"><option value="">全部协议</option><option>376.1</option><option>698.45</option><option>NW</option></select>' +
       '<label class="cb"><input type="checkbox" id="tex" /> 展开同址多连接</label>' +
-      '<button class="primary" id="tref">刷新</button></div><div id="ttable"></div></div>';
-    const run = async () => {
-      const q = new URLSearchParams();
-      const f = $("#tq").value.trim();
-      if (f) q.set("q", f);
-      const p = $("#tp").value;
-      if (p) q.set("protocol", p);
-      if ($("#tex").checked) q.set("expand", "1");
-      const data = await api("/api/terminals?" + q.toString());
-      const rows = data.rows || [];
-      if (!rows.length) {
+      '<label class="cb"><input type="checkbox" id="tshowdur" /> 显示在线时长</label>' +
+      '<span class="toolbar-sep" aria-hidden="true"></span>' +
+      '<label class="inline muted">排序</label>' +
+      '<select id="tsort"><option value="login">登录时间</option><option value="addr">终端地址</option></select>' +
+      '<select id="torder"><option value="desc">降序</option><option value="asc">升序</option></select>' +
+      '<label class="inline muted">每页</label>' +
+      '<select id="tpsize"><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option></select>' +
+      '<button class="primary" id="tref">刷新</button></div>' +
+      '<div id="ttable"></div>' +
+      '<div class="pager toolbar" id="tpnav" hidden>' +
+      '<button type="button" id="tprev">上一页</button>' +
+      '<span id="tpinfo" class="muted"></span>' +
+      '<button type="button" id="tnext">下一页</button></div></div>';
+
+    /** @type {{ rows: any[], total: number, page: number, pageSize: number } | null} */
+    let termSnap = null;
+
+    const paintTerminals = () => {
+      const pnav = $("#tpnav");
+      if (!termSnap) {
+        pnav.hidden = true;
+        $("#ttable").innerHTML = "";
+        return;
+      }
+      const { rows, total, page, pageSize } = termSnap;
+      const maxPage = total === 0 ? 1 : Math.ceil(total / pageSize);
+      if (total === 0) {
+        pnav.hidden = true;
         $("#ttable").innerHTML = '<p class="empty">暂无终端连接</p>';
         return;
       }
+      pnav.hidden = false;
+      $("#tpinfo").textContent = "第 " + page + " / " + maxPage + " 页（共 " + total + " 条）";
+      $("#tprev").disabled = page <= 1;
+      $("#tnext").disabled = page >= maxPage;
+      const showDur = $("#tshowdur").checked;
+      const durTh = showDur ? "<th>在线时长</th>" : "";
       const cols =
-        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>addr</th><th>连接</th><th>在线时长</th><th>登录</th><th>心跳</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th>";
-      let i = 0;
+        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>addr</th>" +
+        durTh +
+        "<th>登录</th><th>心跳</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th><th></th>";
+      const base = (page - 1) * pageSize;
+      let i = base;
       const body = rows
         .map((r) => {
           i++;
+          const dur = r.onlineDuration ? String(r.onlineDuration) : "";
+          const durCell = showDur ? "<td>" + escapeHtml(dur || "—") + "</td>" : "";
           return (
             "<tr><td>" +
             i +
@@ -308,11 +396,9 @@
             escapeHtml(r.protocol) +
             "</td><td>" +
             escapeHtml(r.addr) +
-            "</td><td>" +
-            (r.connTime || "—") +
-            "</td><td>" +
-            escapeHtml(r.onlineDuration || "—") +
-            "</td><td>" +
+            "</td>" +
+            durCell +
+            "<td>" +
             (r.loginTime || "—") +
             "</td><td>" +
             (r.heartbeatTime || "—") +
@@ -325,18 +411,95 @@
             "</td><td>" +
             r.uplinkMsgCount +
             " / " +
-            r.uplinkBytes +
+            escapeHtml(r.uplinkBytes) +
             "</td><td>" +
             r.downlinkMsgCount +
             " / " +
-            r.downlinkBytes +
-            "</td></tr>"
+            escapeHtml(r.downlinkBytes) +
+            "</td><td>" +
+            '<button type="button" class="t-kick" data-conn="' +
+            r.connId +
+            '">踢</button></td></tr>'
           );
         })
         .join("");
-      $("#ttable").innerHTML = '<table class="data"><thead><tr>' + cols + "</tr></thead><tbody>" + body + "</tbody></table>";
+      $("#ttable").innerHTML =
+        '<div class="table-wrap"><table class="data"><thead><tr>' + cols + "</tr></thead><tbody>" + body + "</tbody></table></div>";
     };
-    $("#tref").addEventListener("click", () => run().catch((e) => alert(e.message)));
+
+    const run = async () => {
+      const q = new URLSearchParams();
+      const f = $("#tq").value.trim();
+      if (f) q.set("q", f);
+      const p = $("#tp").value;
+      if (p) q.set("protocol", p);
+      if ($("#tex").checked) q.set("expand", "1");
+      q.set("sort", $("#tsort").value);
+      q.set("order", $("#torder").value);
+      q.set("page", String(tPage));
+      q.set("pageSize", $("#tpsize").value);
+      const data = await api("/api/terminals?" + q.toString());
+      const rows = data.rows || [];
+      const total = data.total != null ? data.total : rows.length;
+      const page = data.page != null ? data.page : tPage;
+      const pageSize = data.pageSize != null ? data.pageSize : Number($("#tpsize").value) || 20;
+      tPage = page;
+      termSnap = { rows, total, page, pageSize };
+      paintTerminals();
+    };
+
+    const runSafe = () => run().catch((e) => alert(e.message));
+
+    $("#tref").addEventListener("click", runSafe);
+    $("#tsort").addEventListener("change", () => {
+      tPage = 1;
+      runSafe();
+    });
+    $("#torder").addEventListener("change", () => {
+      tPage = 1;
+      runSafe();
+    });
+    $("#tpsize").addEventListener("change", () => {
+      tPage = 1;
+      runSafe();
+    });
+    $("#tp").addEventListener("change", () => {
+      tPage = 1;
+      runSafe();
+    });
+    $("#tex").addEventListener("change", () => {
+      tPage = 1;
+      runSafe();
+    });
+    $("#tshowdur").addEventListener("change", () => paintTerminals());
+    $("#tq").addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        tPage = 1;
+        runSafe();
+      }
+    });
+    $("#tprev").addEventListener("click", () => {
+      if (tPage > 1) {
+        tPage--;
+        runSafe();
+      }
+    });
+    $("#tnext").addEventListener("click", () => {
+      tPage++;
+      runSafe();
+    });
+    $("#ttable").addEventListener("click", async (ev) => {
+      const btn = ev.target.closest(".t-kick");
+      if (!btn) return;
+      const id = Number(btn.getAttribute("data-conn"), 10);
+      if (!id || !window.confirm("确定踢掉该终端连接（关闭 TCP）？")) return;
+      try {
+        await api("/api/terminals/kick", { method: "POST", body: JSON.stringify({ connId: id }) });
+        await run();
+      } catch (e) {
+        alert(e.message);
+      }
+    });
     await run();
   }
 
@@ -392,7 +555,8 @@
           );
         })
         .join("");
-      $("#atable").innerHTML = '<table class="data"><thead><tr>' + cols + "</tr></thead><tbody>" + body + "</tbody></table>";
+      $("#atable").innerHTML =
+        '<div class="table-wrap"><table class="data"><thead><tr>' + cols + "</tr></thead><tbody>" + body + "</tbody></table></div>";
     };
     $("#aref").addEventListener("click", () => run().catch((e) => alert(e.message)));
     await run();
@@ -400,9 +564,9 @@
 
   function viewLive() {
     content.innerHTML =
-      '<div class="card"><h2>实时通信日志</h2><p class="muted">依赖 LogPacketHex / LogLinkLayer 等开关；SSE 推送。报文行可按 <strong>协议</strong>、<strong>终端地址 addr</strong> 或 <strong>对端 IP:port</strong> 过滤。</p>' +
+      '<div class="card card-live"><h2>实时通信日志</h2><p class="muted">依赖 LogPacketHex / LogLinkLayer 等开关；SSE 推送。报文行可按 <strong>协议</strong>、<strong>终端地址 addr</strong> 或 <strong>对端 IP:port</strong> 过滤。</p>' +
       '<div class="toolbar">' +
-      '<label class="inline"><span class="muted">协议</span> <select id="lfp"><option value="">全部</option><option>376/1376-1</option><option>698-45</option><option>NW</option><option>376-主站</option><option>698-主站</option><option>Nw-主站</option></select></label>' +
+      '<label class="inline"><span class="muted">协议</span> <select id="lfp"><option value="">全部</option><option>376.1</option><option>698.45</option><option>NW</option><option>376-主站</option><option>698-主站</option><option>Nw-主站</option></select></label>' +
       '<input type="search" id="lf" placeholder="addr 或 IP:port（子串）" />' +
       '<button type="button" class="primary" id="lapply">应用过滤</button>' +
       '<button type="button" id="lclr">清空</button></div><div class="log-view" id="logbox"></div></div>';
@@ -452,7 +616,7 @@
         "<tr><td>" +
         escapeHtml(f.name) +
         "</td><td>" +
-        f.size +
+        escapeHtml(f.sizeHuman != null && f.sizeHuman !== "" ? f.sizeHuman : String(f.size)) +
         "</td><td>" +
         escapeHtml(f.modTime) +
         '</td><td><a href="' +
@@ -462,9 +626,9 @@
     content.innerHTML =
       '<div class="card"><h2>历史日志</h2><p class="muted">' +
       escapeHtml(data.root || "") +
-      '</p><table class="data"><thead><tr><th>文件</th><th>大小</th><th>修改时间</th><th></th></tr></thead><tbody>' +
+      '</p><div class="table-wrap"><table class="data"><thead><tr><th>文件</th><th>大小</th><th>修改时间</th><th></th></tr></thead><tbody>' +
       (body || '<tr><td colspan=4 class="empty">无文件</td></tr>') +
-      "</tbody></table></div>";
+      "</tbody></table></div></div>";
   }
 
   async function viewUsers() {
@@ -495,9 +659,9 @@
       .join("");
     content.innerHTML =
       '<div class="card"><h2>控制台用户</h2><p class="muted">用户与密码保存在 conf/web_users.json；密码 bcrypt 存储。</p>' +
-      '<table class="data"><thead><tr><th>用户名</th><th>角色</th><th>操作</th></tr></thead><tbody>' +
+      '<div class="table-wrap"><table class="data"><thead><tr><th>用户名</th><th>角色</th><th>操作</th></tr></thead><tbody>' +
       (rowHtml || '<tr><td colspan="3" class="empty">暂无用户</td></tr>') +
-      "</tbody></table>" +
+      "</tbody></table></div>" +
       '<h3 class="muted" style="margin-top:1rem;font-size:0.95rem">新增用户</h3>' +
       '<div class="toolbar" style="margin-top:0.35rem">' +
       '<input type="text" id="nu-name" placeholder="用户名" />' +
@@ -576,13 +740,13 @@
     const e = data.effective || {};
     const keys = Object.keys(e).sort();
     let html =
-      '<div class="card"><h2>当前有效配置</h2><p class="muted">普通用户只读。含 password/secret/token 的键及非空 BridgeHost698 等已脱敏显示。</p><table class="data">';
+      '<div class="card"><h2>当前有效配置</h2><p class="muted">普通用户只读。含 password/secret/token 的键及非空 BridgeHost698 等已脱敏显示。</p><div class="table-wrap"><table class="data">';
     for (const k of keys) {
       let v = e[k];
       if (typeof v === "object") v = JSON.stringify(v);
       html += "<tr><th>" + escapeHtml(k) + "</th><td>" + escapeHtml(String(v)) + "</td></tr>";
     }
-    html += "</table></div>";
+    html += "</table></div></div>";
     if (me && me.role === "admin") {
       html +=
         '<div class="card"><h2>管理员：快捷开关</h2><p class="muted">写入 conf 并 Reload；请谨慎操作</p>' +
@@ -648,7 +812,7 @@
     const addrs = (data.addrs || []).join("\n");
     content.innerHTML =
       '<div class="card danger-zone"><h2>终端地址黑名单</h2><p class="muted">一行一个地址；保存后拒绝新登录（LINK_LOGIN）</p>' +
-      '<textarea id="blta" rows="14" style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:0.5rem;">' +
+      '<textarea id="blta" class="bl-textarea" rows="14">' +
       escapeHtml(addrs) +
       '</textarea><p><button class="primary" id="blsave">保存</button> <span id="blmsg" class="muted"></span></p></div>';
     $("#blsave").addEventListener("click", async () => {

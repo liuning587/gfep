@@ -13,6 +13,8 @@ func fepWebProvider() *web.Provider {
 		Terminals:      fepWebTerminalRows,
 		Apps:           fepWebAppRows,
 		TerminalCounts: fepWebTerminalCounts,
+		AppCounts:      fepWebAppCounts,
+		KickTerminal:   fepWebKickTerminal,
 	}
 }
 

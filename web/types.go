@@ -37,7 +37,7 @@ type TerminalRow struct {
 	Protocol         string  `json:"protocol"`
 	Addr             string  `json:"addr"`
 	ConnTime         *string `json:"connTime,omitempty"`
-	OnlineDuration   string  `json:"onlineDuration,omitempty"` // 自连接建立起的时长（服务端计算，中文）
+	OnlineDuration   string  `json:"onlineDuration,omitempty"` // 相对连接建立时刻的时长文案
 	LoginTime        *string `json:"loginTime,omitempty"`
 	HeartbeatTime    *string `json:"heartbeatTime,omitempty"`
 	LastRxTime       *string `json:"lastRxTime,omitempty"`
@@ -72,4 +72,7 @@ type Provider struct {
 	Terminals      func(expand bool, protoFilter, query string) []TerminalRow
 	Apps           func(query string) []AppRow
 	TerminalCounts func() map[string]int
+	AppCounts      func() map[string]int
+	// KickTerminal 关闭指定 connId 的 TCP（仅允许当前登记在终端 registry 中的连接）。
+	KickTerminal func(connID uint32) error
 }
