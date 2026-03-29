@@ -37,6 +37,7 @@ type TerminalRow struct {
 	Protocol         string  `json:"protocol"`
 	Addr             string  `json:"addr"`
 	ConnTime         *string `json:"connTime,omitempty"`
+	OnlineDuration   string  `json:"onlineDuration,omitempty"` // 自连接建立起的时长（服务端计算，中文）
 	LoginTime        *string `json:"loginTime,omitempty"`
 	HeartbeatTime    *string `json:"heartbeatTime,omitempty"`
 	LastRxTime       *string `json:"lastRxTime,omitempty"`
@@ -55,6 +56,7 @@ type AppRow struct {
 	Protocol         string  `json:"protocol"`
 	MasterSummary    string  `json:"masterSummary"`
 	ConnTime         *string `json:"connTime,omitempty"`
+	OnlineDuration   string  `json:"onlineDuration,omitempty"` // 自 TCP 建立起的在线时长（中文）
 	LastRxTime       *string `json:"lastRxTime,omitempty"`
 	LastTxTime       *string `json:"lastTxTime,omitempty"`
 	LastReportTime   *string `json:"lastReportTime,omitempty"`

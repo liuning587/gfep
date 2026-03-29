@@ -22,12 +22,15 @@
       <p class="hint">首次部署：设置环境变量 <code>GFEP_WEB_BOOTSTRAP_PASSWORD</code> 后启动，将自动创建管理员（见 docs/WEB_SPEC.md）。</p>
     </div>
 
-    <div id="main-panel" class="hidden">
+    <div id="main-panel" class="hidden app-main">
       <header class="topbar">
-        <strong>GFEP</strong>
+        <strong class="brand">GFEP</strong>
         <nav id="nav"></nav>
-        <span id="user-label" class="muted"></span>
-        <button type="button" id="btn-logout">退出</button>
+        <div class="topbar-actions">
+          <button type="button" id="btn-theme" class="btn-theme" title="切换为浅色主题" aria-label="切换浅色或深色主题" aria-pressed="false">☀</button>
+          <span id="user-label" class="muted"></span>
+          <button type="button" id="btn-logout">退出</button>
+        </div>
       </header>
       <main id="content"></main>
     </div>

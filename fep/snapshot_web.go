@@ -1,6 +1,7 @@
 package fep
 
 import (
+	"fmt"
 	"gfep/utils"
 	"gfep/web"
 	"gfep/znet"
@@ -27,6 +28,40 @@ func fmtRFC3339UTC(t time.Time) *string {
 
 func u64dec(n uint64) string {
 	return strconv.FormatUint(n, 10)
+}
+
+// formatOnlineSince 将连接建立时间转为「在线时长」中文文案（相对当前时刻）。
+func formatOnlineSince(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	d := time.Since(t)
+	if d < 0 {
+		d = 0
+	}
+	sec := int64(d.Round(time.Second) / time.Second)
+	if sec < 60 {
+		return strconv.FormatInt(sec, 10) + "秒"
+	}
+	if sec < 3600 {
+		m := sec / 60
+		s := sec % 60
+		if s == 0 {
+			return strconv.FormatInt(m, 10) + "分钟"
+		}
+		return fmt.Sprintf("%d分%d秒", m, s)
+	}
+	if sec < 86400 {
+		h := sec / 3600
+		m := (sec % 3600) / 60
+		s := sec % 60
+		return fmt.Sprintf("%d小时%d分%d秒", h, m, s)
+	}
+	days := sec / 86400
+	rem := sec % 86400
+	h := rem / 3600
+	m := (rem % 3600) / 60
+	return fmt.Sprintf("%d天%d小时%d分", days, h, m)
 }
 
 const (
@@ -112,6 +147,7 @@ func terminalRowFromDetails(protocol string, d znet.ConnDetails) web.TerminalRow
 		Protocol:         protocol,
 		Addr:             d.TermAddr,
 		ConnTime:         fmtRFC3339UTC(d.Ctime),
+		OnlineDuration:   formatOnlineSince(d.Ctime),
 		LoginTime:        fmtRFC3339UTC(d.Ltime),
 		HeartbeatTime:    fmtRFC3339UTC(d.Htime),
 		LastRxTime:       fmtRFC3339UTC(d.Rtime),
@@ -138,6 +174,7 @@ func appRowFromDetails(protocol string, d znet.ConnDetails, msa string) web.AppR
 		Protocol:         protocol,
 		MasterSummary:    summary + " · 监听 " + local,
 		ConnTime:         fmtRFC3339UTC(d.Ctime),
+		OnlineDuration:   formatOnlineSince(d.Ctime),
 		LastRxTime:       fmtRFC3339UTC(d.Rtime),
 		LastTxTime:       fmtRFC3339UTC(d.LastTxAt),
 		LastReportTime:   fmtRFC3339UTC(d.LastReportAt),

@@ -204,16 +204,16 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		connN = srv.GetConnMgr().Len()
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"host":                 host,
-		"tcpConnTotal":         connN,
-		"terminalsByProtocol":  byProto,
-		"workerPoolSize":       utils.GlobalObject.WorkerPoolSize,
-		"maxWorkerTaskLen":     utils.GlobalObject.MaxWorkerTaskLen,
-		"maxMsgChanLen":        utils.GlobalObject.MaxMsgChanLen,
-		"forwardWorkers":       utils.GlobalObject.ForwardWorkers,
-		"forwardQueueLen":      utils.GlobalObject.ForwardQueueLen,
-		"version":              utils.GlobalObject.Version,
-		"name":                 utils.GlobalObject.Name,
+		"host":                host,
+		"tcpConnTotal":        connN,
+		"terminalsByProtocol": byProto,
+		"workerPoolSize":      utils.GlobalObject.WorkerPoolSize,
+		"maxWorkerTaskLen":    utils.GlobalObject.MaxWorkerTaskLen,
+		"maxMsgChanLen":       utils.GlobalObject.MaxMsgChanLen,
+		"forwardWorkers":      utils.GlobalObject.ForwardWorkers,
+		"forwardQueueLen":     utils.GlobalObject.ForwardQueueLen,
+		"version":             utils.GlobalObject.Version,
+		"name":                utils.GlobalObject.Name,
 	})
 }
 

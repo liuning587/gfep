@@ -115,12 +115,6 @@ func loadUsers() ([]userRec, error) {
 	return readUsersFile()
 }
 
-func saveUsers(users []userRec) error {
-	usersMu.Lock()
-	defer usersMu.Unlock()
-	return writeUsersFile(users)
-}
-
 // TryBootstrapUsers 若不存在 web_users.json 且设置了 GFEP_WEB_BOOTSTRAP_PASSWORD，则创建初始管理员。
 func TryBootstrapUsers() error {
 	p := usersPath()

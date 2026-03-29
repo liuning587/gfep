@@ -6,6 +6,43 @@
   const nav = $("#nav");
   const userLabel = $("#user-label");
 
+  const THEME_STORAGE_KEY = "gfep-theme";
+
+  function applyTheme(light) {
+    const root = document.documentElement;
+    if (light) {
+      root.setAttribute("data-theme", "light");
+    } else {
+      root.removeAttribute("data-theme");
+    }
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, light ? "light" : "dark");
+    } catch (_) {}
+    const btn = document.getElementById("btn-theme");
+    if (btn) {
+      btn.setAttribute("aria-pressed", light ? "true" : "false");
+      btn.title = light ? "切换为深色主题" : "切换为浅色主题";
+      btn.textContent = light ? "\u263e" : "\u2600";
+    }
+  }
+
+  function initTheme() {
+    let light = false;
+    try {
+      light = localStorage.getItem(THEME_STORAGE_KEY) === "light";
+    } catch (_) {}
+    applyTheme(light);
+  }
+
+  initTheme();
+  const btnTheme = document.getElementById("btn-theme");
+  if (btnTheme) {
+    btnTheme.addEventListener("click", () => {
+      const isLight = document.documentElement.getAttribute("data-theme") === "light";
+      applyTheme(!isLight);
+    });
+  }
+
   let me = null;
   let liveES = null;
   let overviewTimer = null;
@@ -255,7 +292,7 @@
         return;
       }
       const cols =
-        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>addr</th><th>连接</th><th>登录</th><th>心跳</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th>";
+        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>addr</th><th>连接</th><th>在线时长</th><th>登录</th><th>心跳</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th>";
       let i = 0;
       const body = rows
         .map((r) => {
@@ -273,6 +310,8 @@
             escapeHtml(r.addr) +
             "</td><td>" +
             (r.connTime || "—") +
+            "</td><td>" +
+            escapeHtml(r.onlineDuration || "—") +
             "</td><td>" +
             (r.loginTime || "—") +
             "</td><td>" +
@@ -315,7 +354,7 @@
         return;
       }
       const cols =
-        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>主站摘要</th><th>连接</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th>";
+        "<th>#</th><th>connId</th><th>IP:port</th><th>协议</th><th>主站摘要</th><th>连接</th><th>在线时长</th><th>最近收</th><th>最近发</th><th>上报</th><th>上行帧/字节</th><th>下行次/字节</th>";
       let i = 0;
       const body = rows
         .map((r) => {
@@ -333,6 +372,8 @@
             escapeHtml(r.masterSummary) +
             "</td><td>" +
             (r.connTime || "—") +
+            "</td><td>" +
+            escapeHtml(r.onlineDuration || "—") +
             "</td><td>" +
             (r.lastRxTime || "—") +
             "</td><td>" +

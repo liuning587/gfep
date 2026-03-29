@@ -14,8 +14,8 @@ type LiveEvent struct {
 }
 
 const (
-	liveBufSize   = 64
-	liveMaxSub    = 64
+	liveBufSize = 64
+	liveMaxSub  = 64
 )
 
 var (

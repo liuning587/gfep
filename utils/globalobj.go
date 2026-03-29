@@ -44,11 +44,11 @@ type GlobalObj struct {
 	LogWebHost    string //日志 Web 监听 IP，空则 0.0.0.0；仅当 LogWebEnabled 时有效
 	LogWebPort    int    //日志 Web 监听端口，<=0 时用 20084；仅当 LogWebEnabled 时有效
 	// LogWebSessionIdleMin  Web 会话空闲超时（分钟），<=0 时默认 480（8h）
-	LogWebSessionIdleMin int `json:"LogWebSessionIdleMin"`
-	LogDebugClose bool   //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
-	LogConnTrace  bool   //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
-	LogNetVerbose bool   //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
-	LogPacketHex  bool   //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
+	LogWebSessionIdleMin int  `json:"LogWebSessionIdleMin"`
+	LogDebugClose        bool //是否关闭Debug日志级别调试信息 默认false  -- 默认打开debug信息
+	LogConnTrace         bool //是否打印每条连接的 Accept/Add/Remove 等跟踪日志（高并发请关闭）
+	LogNetVerbose        bool //是否打印 Worker 启动、路由注册等网络框架详细日志（默认关闭）
+	LogPacketHex         bool //是否对每条 A:/T: 报文打十六进制日志（高 QPS 请关闭）
 	// LogLinkLayer 为 false 时不打印链路层相关日志（分类 LINK：登录/心跳/登出/Online 及对应 hex）；不影响 FORWARD/REPORT 等
 	LogLinkLayer bool
 	// LogForwardEgressHex 为 true 时，异步转发再各打一行 [FEP->DCU]/[FEP->APP]（与入站 FORWARD 帧相同 hex，默认 false 避免一轮请求打四条）
@@ -141,32 +141,32 @@ func init() {
 	}
 	//初始化GlobalObject变量，设置一些默认值
 	GlobalObject = &GlobalObj{
-		Name:                "gfep",
-		Version:             "V0.3",
-		TCPPort:             20083,
-		Host:                "0.0.0.0",
-		TCPNetwork:          "tcp",
-		BridgeHost698:       "", //0.0.0.0:0
-		MaxConn:             50000,
-		MaxPacketSize:       2200,
-		ConfFilePath:        pwd + "/conf/gfep.json",
-		WorkerPoolSize:      256,
-		MaxWorkerTaskLen:    1024,
-		MaxMsgChanLen:       8,
-		LogDir:              pwd + "/log",
-		LogFile:             "",
-		LogWebEnabled:       false,
-		LogWebHost:          "0.0.0.0",
-		LogWebPort:          20084,
+		Name:                 "gfep",
+		Version:              "V0.3",
+		TCPPort:              20083,
+		Host:                 "0.0.0.0",
+		TCPNetwork:           "tcp",
+		BridgeHost698:        "", //0.0.0.0:0
+		MaxConn:              50000,
+		MaxPacketSize:        2200,
+		ConfFilePath:         pwd + "/conf/gfep.json",
+		WorkerPoolSize:       256,
+		MaxWorkerTaskLen:     1024,
+		MaxMsgChanLen:        8,
+		LogDir:               pwd + "/log",
+		LogFile:              "",
+		LogWebEnabled:        false,
+		LogWebHost:           "0.0.0.0",
+		LogWebPort:           20084,
 		LogWebSessionIdleMin: 0,
-		LogDebugClose:       false,
-		LogConnTrace:        false,
-		LogNetVerbose:       false,
-		LogPacketHex:        false,
-		LogLinkLayer:        true,
-		LogForwardEgressHex: false,
-		ForwardWorkers:      32,
-		ForwardQueueLen:     16384,
+		LogDebugClose:        false,
+		LogConnTrace:         false,
+		LogNetVerbose:        false,
+		LogPacketHex:         false,
+		LogLinkLayer:         true,
+		LogForwardEgressHex:  false,
+		ForwardWorkers:       32,
+		ForwardQueueLen:      16384,
 
 		FirstFrameTimeoutMin:   1,
 		PostLoginRxIdleMinutes: 10,
