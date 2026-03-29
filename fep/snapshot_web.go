@@ -18,14 +18,6 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
-func fmtRFC3339UTC(t time.Time) *string {
-	if t.IsZero() {
-		return nil
-	}
-	s := t.UTC().Format(time.RFC3339Nano)
-	return &s
-}
-
 func u64dec(n uint64) string {
 	return strconv.FormatUint(n, 10)
 }
@@ -146,13 +138,13 @@ func terminalRowFromDetails(protocol string, d znet.ConnDetails) web.TerminalRow
 		RemoteTCP:        d.RemoteTCP,
 		Protocol:         protocol,
 		Addr:             d.TermAddr,
-		ConnTime:         fmtRFC3339UTC(d.Ctime),
+		ConnTime:         web.FormatDisplayUTCPtr(d.Ctime),
 		OnlineDuration:   formatOnlineSince(d.Ctime),
-		LoginTime:        fmtRFC3339UTC(d.Ltime),
-		HeartbeatTime:    fmtRFC3339UTC(d.Htime),
-		LastRxTime:       fmtRFC3339UTC(d.Rtime),
-		LastTxTime:       fmtRFC3339UTC(d.LastTxAt),
-		LastReportTime:   fmtRFC3339UTC(d.LastReportAt),
+		LoginTime:        web.FormatDisplayUTCPtr(d.Ltime),
+		HeartbeatTime:    web.FormatDisplayUTCPtr(d.Htime),
+		LastRxTime:       web.FormatDisplayUTCPtr(d.Rtime),
+		LastTxTime:       web.FormatDisplayUTCPtr(d.LastTxAt),
+		LastReportTime:   web.FormatDisplayUTCPtr(d.LastReportAt),
 		UplinkMsgCount:   u64dec(d.RxFrames),
 		DownlinkMsgCount: u64dec(d.TxWrites),
 		UplinkBytes:      u64dec(d.RxFrameBytes),
@@ -173,11 +165,11 @@ func appRowFromDetails(protocol string, d znet.ConnDetails, msa string) web.AppR
 		RemoteTCP:        d.RemoteTCP,
 		Protocol:         protocol,
 		MasterSummary:    summary + " · 监听 " + local,
-		ConnTime:         fmtRFC3339UTC(d.Ctime),
+		ConnTime:         web.FormatDisplayUTCPtr(d.Ctime),
 		OnlineDuration:   formatOnlineSince(d.Ctime),
-		LastRxTime:       fmtRFC3339UTC(d.Rtime),
-		LastTxTime:       fmtRFC3339UTC(d.LastTxAt),
-		LastReportTime:   fmtRFC3339UTC(d.LastReportAt),
+		LastRxTime:       web.FormatDisplayUTCPtr(d.Rtime),
+		LastTxTime:       web.FormatDisplayUTCPtr(d.LastTxAt),
+		LastReportTime:   web.FormatDisplayUTCPtr(d.LastReportAt),
 		UplinkMsgCount:   u64dec(d.RxFrames),
 		DownlinkMsgCount: u64dec(d.TxWrites),
 		UplinkBytes:      u64dec(d.RxFrameBytes),

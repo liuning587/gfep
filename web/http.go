@@ -293,7 +293,7 @@ func (s *Server) handleLogFiles(w http.ResponseWriter, r *http.Request) {
 		entries = append(entries, logListEntry{
 			Name:    filepath.ToSlash(rel),
 			Size:    fi.Size(),
-			ModTime: fi.ModTime().UTC().Format(time.RFC3339Nano),
+			ModTime: FormatDisplayUTC(fi.ModTime()),
 			IsDir:   d.IsDir(),
 		})
 		return nil
@@ -364,7 +364,7 @@ func (s *Server) handleLiveStream(w http.ResponseWriter, r *http.Request) {
 			if !liveLineMatchesFilters(ev.Line, addrF, protoF) {
 				continue
 			}
-			b, _ := json.Marshal(map[string]any{"ts": ev.TS.UTC().Format(time.RFC3339Nano), "line": ev.Line})
+			b, _ := json.Marshal(map[string]any{"ts": FormatDisplayUTC(ev.TS), "line": ev.Line})
 			_, _ = fmt.Fprintf(w, "data: %s\n\n", string(b))
 			fl.Flush()
 		}
